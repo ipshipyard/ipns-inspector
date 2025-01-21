@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
+import { KeyRound } from 'lucide-react'
 
 const MIN_SEQUENCE = 0
 const MAX_VALIDITY = 365 * 24 * 60 * 60 // 1 year in seconds
@@ -57,7 +58,7 @@ export default function IPNSInspector() {
                 <div className="flex gap-2">
                   <Input
                     value={state.context.nameToInspect}
-                    onChange={(e) => send({ type: 'UPDATE_NAME_TO_INSPECT', value: e.target.value })}
+                    onChange={(e) => send({ type: 'UPDATE_NAME', value: e.target.value })}
                     placeholder="k51... or 12D..."
                   />
                   {
@@ -83,6 +84,22 @@ export default function IPNSInspector() {
           </TabsContent>
 
           <TabsContent value="create">
+            <div className="space-y-2 mb-4">
+              <label className="block text-sm font-medium">Private Key (base64)</label>
+              <div className="flex gap-2 items-center">
+                <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto flex-1">
+                  <span>{state.context.keypair?.raw.toBase64() ?? 'Generating key...'}</span>
+                </pre>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => send({ type: 'GENERATE_NEW_KEY' })}
+                >
+                  <KeyRound className="w-4 h-4 mr-2" />
+                  Generate
+                </Button>
+              </div>
+            </div>
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium">Value</label>
@@ -138,7 +155,7 @@ export default function IPNSInspector() {
 
           {state.context.record && (
             <div className="mt-4 p-4 bg-gray-50 rounded">
-              <h3 className="font-medium mb-2">Name: {state.context.nameInspecting}</h3>
+              <h3 className="font-medium mb-2 break-all">Name: {state.context.nameInspecting}</h3>
               <h3 className="font-medium mb-2">
                 IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}
               </h3>
@@ -153,12 +170,12 @@ export default function IPNSInspector() {
                 />
                 <RecordField 
                   label="Signature V2" 
-                  value={state.context.record.signatureV2.toString()}
+                  value={state.context.record.signatureV2.toBase64()}
                   monospace
                 />
                 <RecordField 
                   label="Data" 
-                  value={state.context.record.data.toString()}
+                  value={state.context.record.data.toBase64()}
                   monospace
                 />
               </div>

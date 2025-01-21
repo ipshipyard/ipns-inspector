@@ -5,7 +5,9 @@ import { type IPNSRecordV1V2, type IPNSRecordV2 } from 'ipns'
 import { setup, fromPromise, assign } from 'xstate'
 import { getPeerIdFromString } from './peer-id'
 // import { createIPNSRecord } from 'ipns'
-// import { generateKeyPair } from '@libp2p/crypto/keys'
+import { generateKeyPair } from '@libp2p/crypto/keys'
+import { Ed25519PrivateKey } from '@libp2p/interface'
+import 'core-js/modules/esnext.uint8-array.to-base64'
 
 export const DEFAULT_TTL = 24 * 60 * 60 // 24 hours in seconds
 
@@ -15,7 +17,8 @@ export type Events =
   | { type: 'INSPECT_NAME' }
   | { type: 'UPDATE_MODE'; value: Mode }
   | { type: 'UPDATE_FORM'; field: string; value: string }
-  | { type: 'UPDATE_NAME_TO_INSPECT'; value: string }
+  | { type: 'UPDATE_NAME'; value: string }
+  | { type: 'GENERATE_NEW_KEY' }
 
 export interface Context {
   error: string | null
@@ -23,6 +26,7 @@ export interface Context {
   nameInspecting: string
   nameToInspect: string
   record?: IPNSRecordV1V2 | IPNSRecordV2
+  keypair?: Ed25519PrivateKey
   formData: {
     value: string
     ttl: number
@@ -46,6 +50,10 @@ export const ipnsMachine = setup({
       const ipns = ipnsConstructor(helia)
       return { helia, ipns }
     }),
+    generateKey: fromPromise(async () => {
+      const keypair = await generateKeyPair('Ed25519')
+      return { keypair }
+    }),
     fetchRecord: fromPromise<IPNSResolveResult, { name: string; ipns: IPNS }>(
       async ({ input: { name, ipns } }) => {
         let peerId: PeerId
@@ -62,7 +70,15 @@ export const ipnsMachine = setup({
         return ipns.resolve(peerId.publicKey, { nocache: true })
       },
     ),
-
+    createRecord: fromPromise<IPNSRecordV1V2 | IPNSRecordV2, { formData: RecordData; ipns: IPNS }>(
+      async ({ input: { formData, ipns } }) => {
+        return ipns.publish(formData.value, {
+          ttl: formData.ttl,
+          validity: formData.validity,
+          sequence: formData.sequence,
+        })
+      },
+    ),
   },
 }).createMachine({
   id: 'ipns-inspector',
@@ -74,7 +90,7 @@ export const ipnsMachine = setup({
     nameValidationError: null,
     fetchingRecord: false,
     formData: {
-      value: '',
+      value: '/ipfs/bafybeicklkqcnlvtiscr2hzkubjwnwjinvskffn4xorqeduft3wq7vm5u4',
       ttl: DEFAULT_TTL,
       validity: DEFAULT_TTL,
       sequence: 0,
@@ -89,7 +105,7 @@ export const ipnsMachine = setup({
         }),
       }),
     },
-    UPDATE_NAME_TO_INSPECT: {
+    UPDATE_NAME: {
       actions: [
         assign({
           nameToInspect: ({ event }) => event.value,
@@ -113,11 +129,11 @@ export const ipnsMachine = setup({
       invoke: {
         src: 'initHelia',
         onDone: {
+          target: 'inspect',
           actions: assign({
             ipns: ({ event }) => event.output.ipns,
             heliaInstance: ({ event }) => event.output.helia,
           }),
-          target: 'inspect',
         },
         onError: {
           target: 'inspect',
@@ -174,37 +190,39 @@ export const ipnsMachine = setup({
         UPDATE_MODE: {
           target: 'inspect',
         },
+        GENERATE_NEW_KEY: {
+          actions: assign({
+            keypair: undefined,
+          }),
+          target: 'generatingKey',
+        }
+      },
+      invoke: {
+        src: 'generateKey',
+        onDone: {
+          target: 'create',
+          actions: assign({
+            keypair: ({ event }) => event.output.keypair,
+          }),
+        },
       },
     },
-    // creating: {
-    //   entry: assign({ error: null }),
-    //   invoke: {
-    //     src: async (context) => {
-    //       const validationErrors = validateRecord(context.formData)
-    //       if (validationErrors.length > 0) {
-    //         throw new Error(validationErrors.join(', '))
-    //       }
-    //       const newRecord = await context.heliaInstance.publish(context.formData.value, {
-    //         ttl: context.formData.ttl,
-    //         validity: context.formData.validity,
-    //         sequence: context.formData.sequence,
-    //       })
-    //       return newRecord
-    //     },
-    //     onDone: {
-    //       target: 'idle',
-    //       actions: assign({
-    //         record: (_, event) => event.data,
-    //         error: null,
-    //       }),
-    //     },
-    //     onError: {
-    //       target: 'idle',
-    //       actions: assign({
-    //         error: (_, event) => event.data.message,
-    //       }),
-    //     },
-    //   },
-    // },
+    generatingKey: {
+      invoke: {
+        src: 'generateKey',
+        onDone: {
+          target: 'create',
+          actions: assign({
+            keypair: ({ event }) => event.output.keypair,
+          }),
+        },
+        onError: {
+          target: 'create',
+          actions: assign({
+            error: ({ event }) => event.error as string,
+          }),
+        },
+      },
+    },
   },
 })
