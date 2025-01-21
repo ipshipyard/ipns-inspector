@@ -155,7 +155,9 @@ export default function IPNSInspector() {
 
           {state.context.record && (
             <div className="mt-4 p-4 bg-gray-50 rounded">
-              <h3 className="font-medium mb-2 break-all">Name: {state.context.nameInspecting}</h3>
+              <h3 className="font-medium mb-2 break-all">
+                Name: <span className="text-teal-600">{state.context.nameInspecting}</span>
+              </h3>
               <h3 className="font-medium mb-2">
                 IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}
               </h3>
