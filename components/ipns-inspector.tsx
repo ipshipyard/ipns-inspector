@@ -13,7 +13,7 @@ import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { Tooltip } from '@radix-ui/react-tooltip'
 
-const MIN_SEQUENCE = 0
+
 const MAX_VALIDITY = 365 * 24 * 60 * 60 // 1 year in seconds
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -61,6 +61,7 @@ export default function IPNSInspector() {
                   <Input
                     value={state.context.nameToInspect}
                     onChange={(e) => send({ type: 'UPDATE_NAME', value: e.target.value })}
+                    onBlur={(e) => send({ type: 'UPDATE_NAME', validate: true, value: e.target.value })}
                     placeholder="k51... or 12D..."
                   />
                   {
@@ -100,17 +101,19 @@ export default function IPNSInspector() {
               {state.context?.keypair && (
                 <div className="space-y-2">
                   <div className="flex gap-2 items-center">
-                  <label className="block text-sm font-medium">IPNS Name</label>
-                  <TooltipProvider delayDuration={100}>
-                    <Tooltip>
-                      <TooltipTrigger asChild={false}>
-                        <InfoIcon className="w-4 h-4 text-blue-700" />
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        <p className="text-sm m-2 p-2 bg-black text-white rounded-md">The IPNS name is a base36 CID derived from the public key</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                    <label className="block text-sm font-medium">IPNS Name</label>
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild={false}>
+                          <InfoIcon className="w-4 h-4 text-blue-700" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
+                            The IPNS name is a base36 CID derived from the public key
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                   <div className="flex gap-2 items-center">
                     <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto flex-1">
@@ -122,11 +125,26 @@ export default function IPNSInspector() {
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="block text-sm font-medium">Value</label>
+                <div className="flex gap-2 items-center">
+                  <label className="block text-sm font-medium">Value</label>
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild={false}>
+                        <InfoIcon className="w-4 h-4 text-blue-700" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
+                          CID or path to publish, e.g.{' '}
+                          <code className="text-xs">bafy... or bafy.../assets/image.png</code>
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <Input
                   value={state.context.formData.value}
                   onChange={(e) => send({ type: 'UPDATE_FORM', field: 'value', value: e.target.value })}
-                  placeholder="CID or path to publish"
+                  placeholder="bafy..."
                 />
               </div>
 
@@ -179,7 +197,7 @@ export default function IPNSInspector() {
                 />
               </div> */}
 
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <label className="block text-sm font-medium">Sequence Number</label>
                 <Input
                   type="number"
@@ -187,11 +205,25 @@ export default function IPNSInspector() {
                   onChange={(e) => send({ type: 'UPDATE_FORM', field: 'sequence', value: e.target.value })}
                   min={MIN_SEQUENCE}
                 />
-              </div>
+              </div> */}
 
-              <Button onClick={() => send({ type: 'CREATE' })} disabled={isLoading} className="w-full">
-                Create Record
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => send({ type: 'CREATE_RECORD' })}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  Create and Ispect Record
+                </Button>
+                <Button
+                  onClick={() => send({ type: 'PUBLISH_RECORD' })}
+                  disabled={state.context.record == null || state.context.publishingRecord}
+                  className="w-full"
+                >
+                  Publish Record
+                  {state.context.publishingRecord ? <Spinner /> : null}
+                </Button>
+              </div>
             </div>
           </TabsContent>
 
@@ -204,7 +236,7 @@ export default function IPNSInspector() {
           {state.context.record && (
             <div className="mt-4 p-4 bg-gray-50 rounded">
               <h3 className="font-medium mb-2 break-all">
-                Name: <span className="text-teal-600">{state.context.nameInspecting}</span>
+                Name: <span className="text-teal-600">{state.context.record.pubKey}</span>
               </h3>
               <h3 className="font-medium mb-2">
                 IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}

@@ -1,6 +1,8 @@
 import { createHeliaHTTP, Helia } from '@helia/http'
+import { delegatedHTTPRouting } from '@helia/routers'
 import { ipns as ipnsConstructor } from '@helia/ipns'
 import { type IPNSResolveResult, type IPNS } from '@helia/ipns'
+import { CID } from 'multiformats/cid'
 import { type IPNSRecordV1V2, type IPNSRecordV2 } from 'ipns'
 import { setup, fromPromise, assign } from 'xstate'
 import { getPeerIdFromString } from './peer-id'
@@ -17,13 +19,14 @@ export type Events =
   | { type: 'INSPECT_NAME' }
   | { type: 'UPDATE_MODE'; value: Mode }
   | { type: 'UPDATE_FORM'; field: string; value: string }
-  | { type: 'UPDATE_NAME'; value: string }
+  | { type: 'UPDATE_NAME'; value: string; validate?: boolean }
   | { type: 'GENERATE_NEW_KEY' }
+  | { type: 'CREATE_RECORD' }
+  | { type: 'PUBLISH_RECORD' }
 
 export interface Context {
   error: string | null
   nameValidationError: string | null
-  nameInspecting: string
   nameToInspect: string
   record?: IPNSRecordV1V2 | IPNSRecordV2
   keypair?: Ed25519PrivateKey
@@ -33,6 +36,7 @@ export interface Context {
     sequence: number
   }
   fetchingRecord: boolean
+  publishingRecord: boolean
   heliaInstance?: Helia
   ipns?: IPNS
 }
@@ -69,27 +73,30 @@ export const ipnsMachine = setup({
         return ipns.resolve(peerId.publicKey, { nocache: true })
       },
     ),
-    createRecord: fromPromise<IPNSRecordV1V2 | IPNSRecordV2, { keypair: Ed25519PrivateKey; formData: Context['formData']; ipns: IPNS }>(
-      async ({ input: { keypair, formData, ipns } }) => {
-        return ipns.publish(formData.value, {
-          ttl: formData.ttl,
-          lifetime: formData.lifetime,
-          sequence: formData.sequence,
-        })
-      },
-    ),
+    createRecord: fromPromise<
+      IPNSRecordV1V2 | IPNSRecordV2,
+      { keypair: Ed25519PrivateKey; formData: Context['formData']; ipns: IPNS; publish: boolean }
+    >(async ({ input: { keypair, formData, ipns, publish } }) => {
+      const cid = CID.parse(formData.value)
+
+      // const cid = new CID(formData.value)
+      return ipns.publish(keypair, cid, {
+        lifetime: formData.lifetime,
+        offline: !publish,
+      })
+    }),
   },
 }).createMachine({
   id: 'ipns-inspector',
   initial: 'init',
   context: {
     nameToInspect: '',
-    nameInspecting: '',
     error: null,
     nameValidationError: null,
     fetchingRecord: false,
+    publishingRecord: false,
     formData: {
-      value: '/ipfs/bafybeicklkqcnlvtiscr2hzkubjwnwjinvskffn4xorqeduft3wq7vm5u4',
+      value: 'bafybeicklkqcnlvtiscr2hzkubjwnwjinvskffn4xorqeduft3wq7vm5u4',
       lifetime: DEFAULT_LIFETIME_MS,
       sequence: 0,
     },
@@ -108,6 +115,9 @@ export const ipnsMachine = setup({
         assign({
           nameToInspect: ({ event }) => event.value,
           nameValidationError: ({ event }) => {
+            if (!event.validate) {
+              return null
+            }
             try {
               const peerId = getPeerIdFromString(event.value)
               if (!peerId.publicKey) {
@@ -117,7 +127,7 @@ export const ipnsMachine = setup({
             } catch (_) {
               return 'Invalid IPNS Name. IPNS names must be base36 encoded CIDs'
             }
-          }
+          },
         }),
       ],
     },
@@ -147,7 +157,7 @@ export const ipnsMachine = setup({
           target: 'verifyAndFetch',
         },
         UPDATE_MODE: {
-          target: 'create',
+          target: 'generatingKey',
         },
       },
     },
@@ -165,7 +175,6 @@ export const ipnsMachine = setup({
         onDone: {
           actions: assign({
             record: ({ event }) => event.output.record,
-            nameInspecting: ({ context }) => context.nameToInspect,
           }),
           target: 'inspect',
         },
@@ -181,27 +190,24 @@ export const ipnsMachine = setup({
     create: {
       entry: assign({
         error: null,
-        nameInspecting: '',
-        record: undefined,
       }),
       on: {
+        CREATE_RECORD: {
+          target: 'creatingRecord',
+        },
+        PUBLISH_RECORD: {
+          // creating state will also publish based on the event.type
+          target: 'publishingRecord',
+        },
         UPDATE_MODE: {
           target: 'inspect',
         },
         GENERATE_NEW_KEY: {
           actions: assign({
             keypair: undefined,
+            record: undefined,
           }),
           target: 'generatingKey',
-        }
-      },
-      invoke: {
-        src: 'generateKey',
-        onDone: {
-          target: 'create',
-          actions: assign({
-            keypair: ({ event }) => event.output.keypair,
-          }),
         },
       },
     },
@@ -212,6 +218,58 @@ export const ipnsMachine = setup({
           target: 'create',
           actions: assign({
             keypair: ({ event }) => event.output.keypair,
+          }),
+        },
+        onError: {
+          target: 'create',
+          actions: assign({
+            error: ({ event }) => event.error as string,
+          }),
+        },
+      },
+    },
+    creatingRecord: {
+      invoke: {
+        src: 'createRecord',
+        input: ({ context }) => ({
+          keypair: context.keypair!,
+          formData: context.formData!,
+          ipns: context.ipns!,
+          publish: false,
+        }),
+        onDone: {
+          target: 'create',
+          actions: assign({
+            record: ({ event }) => event.output,
+          }),
+        },
+        onError: {
+          target: 'create',
+          actions: assign({
+            error: ({ event }) => event.error as string,
+          }),
+        },
+      },
+    },
+    publishingRecord: {
+      entry: assign({
+        publishingRecord: true,
+      }),
+      exit: assign({
+        publishingRecord: false,
+      }),
+      invoke: {
+        src: 'createRecord',
+        input: ({ context }) => ({
+          keypair: context.keypair!,
+          formData: context.formData!,
+          ipns: context.ipns!,
+          publish: true,
+        }),
+        onDone: {
+          target: 'create',
+          actions: assign({
+            record: ({ event }) => event.output,
           }),
         },
         onError: {

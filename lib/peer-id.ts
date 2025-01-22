@@ -1,6 +1,6 @@
-import { peerIdFromCID, peerIdFromString, peerIdFromPrivateKey } from '@libp2p/peer-id'
+import { peerIdFromCID, peerIdFromString, peerIdFromPrivateKey, peerIdFromPublicKey } from '@libp2p/peer-id'
 import { CID } from 'multiformats/cid'
-import type { PeerId, Ed25519PrivateKey } from '@libp2p/interface'
+import type { PeerId, Ed25519PrivateKey, PublicKey } from '@libp2p/interface'
 import { base36 } from 'multiformats/bases/base36'
 
 /**
@@ -23,4 +23,8 @@ export function getPeerIdFromString (peerIdString: string): PeerId {
 
 export function getIPNSNameFromKeypair(privateKey: Ed25519PrivateKey): string {
   return peerIdFromPrivateKey(privateKey).toCID().toString(base36)
+}
+
+export function getIPNSNameFromPublicKey(publicKey: PublicKey): string {
+  return peerIdFromPublicKey(publicKey).toCID().toString(base36)
 }
