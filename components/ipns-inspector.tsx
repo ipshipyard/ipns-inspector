@@ -8,22 +8,24 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
-import { KeyRound } from 'lucide-react'
+import { KeyRound, InfoIcon } from 'lucide-react'
+import { getIPNSNameFromKeypair } from '@/lib/peer-id'
+import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
+import { Tooltip } from '@radix-ui/react-tooltip'
 
 const MIN_SEQUENCE = 0
 const MAX_VALIDITY = 365 * 24 * 60 * 60 // 1 year in seconds
+const DAY_MS = 24 * 60 * 60 * 1000
 
 const inspector = createBrowserInspector({
   autoStart: false,
 })
 
 interface RecordFieldProps {
-  label: string;
-  value: string;
-  monospace?: boolean;
+  label: string
+  value: string
+  monospace?: boolean
 }
-
-
 
 // Simplified component
 export default function IPNSInspector() {
@@ -90,15 +92,33 @@ export default function IPNSInspector() {
                 <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto flex-1">
                   <span>{state.context.keypair?.raw.toBase64() ?? 'Generating key...'}</span>
                 </pre>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => send({ type: 'GENERATE_NEW_KEY' })}
-                >
+                <Button variant="outline" onClick={() => send({ type: 'GENERATE_NEW_KEY' })}>
                   <KeyRound className="w-4 h-4 mr-2" />
                   Generate
                 </Button>
               </div>
+              {state.context?.keypair && (
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-center">
+                  <label className="block text-sm font-medium">IPNS Name</label>
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild={false}>
+                        <InfoIcon className="w-4 h-4 text-blue-700" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p className="text-sm m-2 p-2 bg-black text-white rounded-md">The IPNS name is a base36 CID derived from the public key</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto flex-1">
+                      <span>{getIPNSNameFromKeypair(state.context.keypair)}</span>
+                    </pre>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -111,6 +131,45 @@ export default function IPNSInspector() {
               </div>
 
               <div className="space-y-2">
+                <div className="flex flex-row justify-around">
+                  <label className="block text-sm font-medium">Validity / Lifetime (milliseconds)</label>
+                  <label className="block text-sm font-medium ">Presets</label>
+                </div>
+                <div className="flex gap-1 items-center">
+                  <Input
+                    type="number"
+                    value={state.context.formData.lifetime}
+                    onChange={(e) => send({ type: 'UPDATE_FORM', field: 'lifetime', value: e.target.value })}
+                    min="1"
+                    max={MAX_VALIDITY}
+                  />
+
+                  <Button
+                    variant="outline"
+                    onClick={() => send({ type: 'UPDATE_FORM', field: 'lifetime', value: DAY_MS.toString() })}
+                  >
+                    1 day
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      send({ type: 'UPDATE_FORM', field: 'lifetime', value: (7 * DAY_MS).toString() })
+                    }
+                  >
+                    1 week
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      send({ type: 'UPDATE_FORM', field: 'lifetime', value: (365 * DAY_MS).toString() })
+                    }
+                  >
+                    1 year
+                  </Button>
+                </div>
+              </div>
+
+              {/* <div className="space-y-2">
                 <label className="block text-sm font-medium">TTL (seconds)</label>
                 <Input
                   type="number"
@@ -118,18 +177,7 @@ export default function IPNSInspector() {
                   onChange={(e) => send({ type: 'UPDATE_FORM', field: 'ttl', value: e.target.value })}
                   min="1"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">Validity (seconds)</label>
-                <Input
-                  type="number"
-                  value={state.context.formData.validity}
-                  onChange={(e) => send({ type: 'UPDATE_FORM', field: 'validity', value: e.target.value })}
-                  min="1"
-                  max={MAX_VALIDITY}
-                />
-              </div>
+              </div> */}
 
               <div className="space-y-2">
                 <label className="block text-sm font-medium">Sequence Number</label>
@@ -166,20 +214,20 @@ export default function IPNSInspector() {
                 <RecordField label="Validity Type" value={state.context.record.validityType} />
                 <RecordField label="Validity" value={state.context.record.validity} />
                 <RecordField label="Sequence" value={state.context.record.sequence.toString()} />
-                <RecordField 
-                  label="TTL" 
-                  value={state.context.record.ttl ? (Number(state.context.record.ttl) / 1e9).toString() + ' seconds' : 'Not set'} 
+                <RecordField
+                  label="TTL"
+                  value={
+                    state.context.record.ttl
+                      ? (Number(state.context.record.ttl) / 1e9).toString() + ' seconds'
+                      : 'Not set'
+                  }
                 />
-                <RecordField 
-                  label="Signature V2" 
+                <RecordField
+                  label="Signature V2"
                   value={state.context.record.signatureV2.toBase64()}
                   monospace
                 />
-                <RecordField 
-                  label="Data" 
-                  value={state.context.record.data.toBase64()}
-                  monospace
-                />
+                <RecordField label="Data" value={state.context.record.data.toBase64()} monospace />
               </div>
             </div>
           )}
@@ -192,10 +240,6 @@ export default function IPNSInspector() {
 const RecordField: React.FC<RecordFieldProps> = ({ label, value, monospace }) => (
   <div className="border rounded p-3 bg-white">
     <div className="text-sm font-medium text-gray-500 mb-1">{label}</div>
-    <div className={`break-all ${monospace ? 'font-mono text-sm' : ''}`}>
-      {value}
-    </div>
+    <div className={`break-all ${monospace ? 'font-mono text-sm' : ''}`}>{value}</div>
   </div>
-);
-
-
+)

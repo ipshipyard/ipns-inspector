@@ -9,7 +9,7 @@ import { generateKeyPair } from '@libp2p/crypto/keys'
 import { Ed25519PrivateKey } from '@libp2p/interface'
 import 'core-js/modules/esnext.uint8-array.to-base64'
 
-export const DEFAULT_TTL = 24 * 60 * 60 // 24 hours in seconds
+export const DEFAULT_LIFETIME_MS = 24 * 60 * 60 * 1000 // 24 hours in seconds
 
 export type Mode = 'inspect' | 'create'
 
@@ -29,8 +29,7 @@ export interface Context {
   keypair?: Ed25519PrivateKey
   formData: {
     value: string
-    ttl: number
-    validity: number
+    lifetime: number
     sequence: number
   }
   fetchingRecord: boolean
@@ -70,11 +69,11 @@ export const ipnsMachine = setup({
         return ipns.resolve(peerId.publicKey, { nocache: true })
       },
     ),
-    createRecord: fromPromise<IPNSRecordV1V2 | IPNSRecordV2, { formData: RecordData; ipns: IPNS }>(
-      async ({ input: { formData, ipns } }) => {
+    createRecord: fromPromise<IPNSRecordV1V2 | IPNSRecordV2, { keypair: Ed25519PrivateKey; formData: Context['formData']; ipns: IPNS }>(
+      async ({ input: { keypair, formData, ipns } }) => {
         return ipns.publish(formData.value, {
           ttl: formData.ttl,
-          validity: formData.validity,
+          lifetime: formData.lifetime,
           sequence: formData.sequence,
         })
       },
@@ -91,8 +90,7 @@ export const ipnsMachine = setup({
     fetchingRecord: false,
     formData: {
       value: '/ipfs/bafybeicklkqcnlvtiscr2hzkubjwnwjinvskffn4xorqeduft3wq7vm5u4',
-      ttl: DEFAULT_TTL,
-      validity: DEFAULT_TTL,
+      lifetime: DEFAULT_LIFETIME_MS,
       sequence: 0,
     },
   },
