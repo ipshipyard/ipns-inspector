@@ -3,9 +3,9 @@ import { delegatedHTTPRouting } from '@helia/routers'
 import { ipns as ipnsConstructor } from '@helia/ipns'
 import { type IPNSResolveResult, type IPNS } from '@helia/ipns'
 import { CID } from 'multiformats/cid'
-import { type IPNSRecordV1V2, type IPNSRecordV2 } from 'ipns'
+import { type IPNSRecord } from 'ipns'
 import { setup, fromPromise, assign } from 'xstate'
-import { getPeerIdFromString } from './peer-id'
+import { getIPNSNameFromKeypair, getPeerIdFromString } from './peer-id'
 // import { createIPNSRecord } from 'ipns'
 import { generateKeyPair } from '@libp2p/crypto/keys'
 import { Ed25519PrivateKey } from '@libp2p/interface'
@@ -25,15 +25,15 @@ export type Events =
   | { type: 'PUBLISH_RECORD' }
 
 export interface Context {
-  error: string | null
-  nameValidationError: string | null
-  nameToInspect: string
-  record?: IPNSRecordV1V2 | IPNSRecordV2
-  keypair?: Ed25519PrivateKey
+  error: string | Error | null // general error
+  nameValidationError: string | null // name validation error
+  nameInput: string // name input field
+  name: string // The IPNS name either inspecting (either fetched or created)
+  record?: IPNSRecord // the record fetched or created
+  keypair?: Ed25519PrivateKey // the keypair used to create the record
   formData: {
-    value: string
-    lifetime: number
-    sequence: number
+    value: string // the value field for the IPNS record to publish
+    lifetime: number // the lifetime field for the IPNS record to publish
   }
   fetchingRecord: boolean
   publishingRecord: boolean
@@ -74,12 +74,11 @@ export const ipnsMachine = setup({
       },
     ),
     createRecord: fromPromise<
-      IPNSRecordV1V2 | IPNSRecordV2,
+      IPNSRecord,
       { keypair: Ed25519PrivateKey; formData: Context['formData']; ipns: IPNS; publish: boolean }
     >(async ({ input: { keypair, formData, ipns, publish } }) => {
       const cid = CID.parse(formData.value)
 
-      // const cid = new CID(formData.value)
       return ipns.publish(keypair, cid, {
         lifetime: formData.lifetime,
         offline: !publish,
@@ -90,15 +89,15 @@ export const ipnsMachine = setup({
   id: 'ipns-inspector',
   initial: 'init',
   context: {
-    nameToInspect: '',
+    name: '',
+    nameInput: '',
     error: null,
     nameValidationError: null,
     fetchingRecord: false,
     publishingRecord: false,
     formData: {
-      value: 'bafybeicklkqcnlvtiscr2hzkubjwnwjinvskffn4xorqeduft3wq7vm5u4',
+      value: '',
       lifetime: DEFAULT_LIFETIME_MS,
-      sequence: 0,
     },
   },
   on: {
@@ -113,7 +112,7 @@ export const ipnsMachine = setup({
     UPDATE_NAME: {
       actions: [
         assign({
-          nameToInspect: ({ event }) => event.value,
+          nameInput: ({ event }) => event.value,
           nameValidationError: ({ event }) => {
             if (!event.validate) {
               return null
@@ -124,7 +123,8 @@ export const ipnsMachine = setup({
                 return 'Invalid IPNS Name: Missing public key'
               }
               return null
-            } catch (_) {
+            } catch (error) {
+              console.error(error)
               return 'Invalid IPNS Name. IPNS names must be base36 encoded CIDs'
             }
           },
@@ -134,22 +134,24 @@ export const ipnsMachine = setup({
   },
   states: {
     init: {
-      invoke: {
-        src: 'initHelia',
-        onDone: {
-          target: 'inspect',
-          actions: assign({
-            ipns: ({ event }) => event.output.ipns,
-            heliaInstance: ({ event }) => event.output.helia,
-          }),
+      invoke: [
+        {
+          src: 'initHelia',
+          onDone: {
+            target: 'inspect',
+            actions: assign({
+              ipns: ({ event }) => event.output.ipns,
+              heliaInstance: ({ event }) => event.output.helia,
+            }),
+          },
+          onError: {
+            target: 'inspect',
+            actions: assign({
+              error: ({ event }) => event.error as string,
+            }),
+          },
         },
-        onError: {
-          target: 'inspect',
-          actions: assign({
-            error: ({ event }) => event.error as string,
-          }),
-        },
-      },
+      ],
     },
     inspect: {
       on: {
@@ -157,7 +159,12 @@ export const ipnsMachine = setup({
           target: 'verifyAndFetch',
         },
         UPDATE_MODE: {
-          target: 'generatingKey',
+          actions: assign({
+            nameInput: '',
+            nameValidationError: null,
+            record: undefined,
+          }),
+          target: 'create',
         },
       },
     },
@@ -171,10 +178,11 @@ export const ipnsMachine = setup({
       }),
       invoke: {
         src: 'fetchRecord',
-        input: ({ context }) => ({ name: context.nameToInspect, ipns: context.ipns! }),
+        input: ({ context }) => ({ name: context.nameInput, ipns: context.ipns! }),
         onDone: {
           actions: assign({
             record: ({ event }) => event.output.record,
+            name: ({ context }) => context.nameInput,
           }),
           target: 'inspect',
         },
@@ -188,9 +196,6 @@ export const ipnsMachine = setup({
       },
     },
     create: {
-      entry: assign({
-        error: null,
-      }),
       on: {
         CREATE_RECORD: {
           target: 'creatingRecord',
@@ -241,12 +246,16 @@ export const ipnsMachine = setup({
           target: 'create',
           actions: assign({
             record: ({ event }) => event.output,
+            // update the name from the keypair since it's not contained in the record
+            name: ({ context }) => getIPNSNameFromKeypair(context.keypair),
+            error: null,
           }),
         },
         onError: {
           target: 'create',
           actions: assign({
             error: ({ event }) => event.error as string,
+            record: undefined,
           }),
         },
       },
@@ -275,7 +284,7 @@ export const ipnsMachine = setup({
         onError: {
           target: 'create',
           actions: assign({
-            error: ({ event }) => event.error as string,
+            error: ({ event }) => event.error as Error,
           }),
         },
       },

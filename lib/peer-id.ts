@@ -21,7 +21,8 @@ export function getPeerIdFromString (peerIdString: string): PeerId {
 }
 
 
-export function getIPNSNameFromKeypair(privateKey: Ed25519PrivateKey): string {
+export function getIPNSNameFromKeypair(privateKey?: Ed25519PrivateKey): string {
+  if (!privateKey) return ''
   return peerIdFromPrivateKey(privateKey).toCID().toString(base36)
 }
 

@@ -59,7 +59,7 @@ export default function IPNSInspector() {
                 <label className="block text-sm font-medium">IPNS Name</label>
                 <div className="flex gap-2">
                   <Input
-                    value={state.context.nameToInspect}
+                    value={state.context.nameInput}
                     onChange={(e) => send({ type: 'UPDATE_NAME', value: e.target.value })}
                     onBlur={(e) => send({ type: 'UPDATE_NAME', validate: true, value: e.target.value })}
                     placeholder="k51... or 12D..."
@@ -70,7 +70,7 @@ export default function IPNSInspector() {
                       disabled={
                         isLoading ||
                         state.context.nameValidationError != null ||
-                        state.context.nameToInspect.length === 0
+                        state.context.nameInput?.length === 0
                       }
                     >
                       Fetch Record {state.context.fetchingRecord ? <Spinner /> : null}
@@ -91,7 +91,7 @@ export default function IPNSInspector() {
               <label className="block text-sm font-medium">Private Key (base64)</label>
               <div className="flex gap-2 items-center">
                 <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto flex-1">
-                  <span>{state.context.keypair?.raw.toBase64() ?? 'Generating key...'}</span>
+                  <span>{state.context.keypair?.raw.toBase64() ?? 'Generate key first'}</span>
                 </pre>
                 <Button variant="outline" onClick={() => send({ type: 'GENERATE_NEW_KEY' })}>
                   <KeyRound className="w-4 h-4 mr-2" />
@@ -134,8 +134,9 @@ export default function IPNSInspector() {
                       </TooltipTrigger>
                       <TooltipContent side="right">
                         <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
-                          CID or path to publish, e.g.{' '}
-                          <code className="text-xs">bafy... or bafy.../assets/image.png</code>
+                          CID to publish, e.g. <code className="text-xs">bafy...</code>
+                          {/* CID or path to publish, e.g.{' '}
+                          <code className="text-xs">bafy... or bafy.../assets/image.png</code> */}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -210,7 +211,7 @@ export default function IPNSInspector() {
               <div className="flex gap-2">
                 <Button
                   onClick={() => send({ type: 'CREATE_RECORD' })}
-                  disabled={isLoading}
+                  disabled={isLoading || state.context.keypair == null}
                   className="w-full"
                 >
                   Create and Ispect Record
@@ -234,9 +235,9 @@ export default function IPNSInspector() {
           )}
 
           {state.context.record && (
-            <div className="mt-4 p-4 bg-gray-50 rounded">
+            <div className="mt-4 p-4 bg-teal-50 rounded">
               <h3 className="font-medium mb-2 break-all">
-                Name: <span className="text-teal-600">{state.context.record.pubKey}</span>
+                IPNS Name: <span className="text-teal-600">{state.context.name}</span>
               </h3>
               <h3 className="font-medium mb-2">
                 IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}
