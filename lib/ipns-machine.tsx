@@ -7,7 +7,7 @@ import { setup, fromPromise, assign } from 'xstate'
 import { getIPNSNameFromKeypair, getPeerIdFromString } from './peer-id'
 // import { createIPNSRecord } from 'ipns'
 import { generateKeyPair } from '@libp2p/crypto/keys'
-import { Ed25519PrivateKey } from '@libp2p/interface'
+import type { PeerId, Ed25519PrivateKey } from '@libp2p/interface'
 import 'core-js/modules/esnext.uint8-array.to-base64'
 
 export const DEFAULT_LIFETIME_MS = 24 * 60 * 60 * 1000 // 24 hours in seconds
