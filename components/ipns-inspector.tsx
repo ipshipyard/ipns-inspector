@@ -33,8 +33,7 @@ export default function IPNSInspector() {
     inspect: inspector?.inspect,
   })
   const isLoading = state.value === 'init'
-  console.log(state.value)
-  console.log(state.context)
+  console.log(state.value, state.context)
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
