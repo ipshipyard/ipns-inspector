@@ -1,7 +1,9 @@
+import { Book } from "lucide-react";
+
 export default function Footer() {
   return (
     <footer className="flex flex-col items-center gap-6 bg-white/50 backdrop-blur-sm p-8 rounded-2xl ">
-      <div className="flex gap-6">
+      <div className="flex gap-2">
         <a
           href="https://github.com/ipfs/ipns-inspector"
           target="_blank"
@@ -32,6 +34,15 @@ export default function Footer() {
             />
           </svg>
           IPNS Specs
+        </a>
+        <a
+          href="https://docs.ipfs.tech/concepts/ipns/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors text-gray-700"
+        >
+          <Book className="w-4 h-4 mr-2 text-blue-700" />
+          IPNS Docs
         </a>
       </div>
     </footer>

@@ -1,5 +1,4 @@
 import { createHeliaHTTP, Helia } from '@helia/http'
-import { delegatedHTTPRouting } from '@helia/routers'
 import { ipns as ipnsConstructor } from '@helia/ipns'
 import { type IPNSResolveResult, type IPNS } from '@helia/ipns'
 import { CID } from 'multiformats/cid'
@@ -255,7 +254,7 @@ export const ipnsMachine = setup({
           target: 'create',
           actions: assign({
             error: ({ event }) => event.error as string,
-            record: undefined,
+            record: undefined, // clear the record to avoid a
           }),
         },
       },
