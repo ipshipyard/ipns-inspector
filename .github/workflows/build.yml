@@ -28,7 +28,8 @@ jobs:
         run: npm run build
 
   publish-to-ipfs:
-    needs:
+    needs: 'build'
+    steps:
       - run: npm install -g @web3-storage/w3cli
 
       - run: w3 space add ${{ inputs.proof }}
