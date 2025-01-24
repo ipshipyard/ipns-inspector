@@ -31,7 +31,7 @@ jobs:
         uses: web3-storage/add-to-web3@v3
         id: web3storage # 
         with:
-          path_to_add: 'dist'
+          path_to_add: 'out'
           secret_key: ${{ secrets.STORACHA_KEY }}
           proof: ${{ secrets.STORACHA_PROOF }}
 
