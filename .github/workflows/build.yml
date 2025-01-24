@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  publish-to-ipfs:
+  build:
     runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout code
@@ -26,6 +26,18 @@ jobs:
 
       - name: Build project
         run: npm run build
+
+  publish-to-ipfs:
+    needs:
+      - run: npm install -g @web3-storage/w3cli
+
+      - run: w3 space add ${{ inputs.proof }}
+        env:
+          W3_PRINCIPAL: ${{ inputs.secret_key }}
+
+      - run: w3 up ${{ inputs.path_to_add }}
+        env:
+          W3_PRINCIPAL: ${{ inputs.secret_key }}
 
       - name: Upload to IPFS
         uses: web3-storage/add-to-web3@v3
