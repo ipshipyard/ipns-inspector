@@ -58,6 +58,7 @@ jobs:
           fi
           CID=$(npx ipfs-car pack out --no-wrap --output build.car | tail -n 1)
           echo "cid=$CID" >> "$GITHUB_OUTPUT"
+          echo "$GITHUB_OUTPUT"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -124,7 +125,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
-          body-includes: '🚀 Building'
+          body-includes: '🚀 Build'
 
       - name: Create or update comment
         if: github.event_name == 'pull_request'
@@ -136,6 +137,6 @@ jobs:
             ### 🚀 Build Preview on IPFS ready
 
             🔏 CID: `${{ needs.build.outputs.cid }}`
-            [Preview Deployment](https://w3s.link/ipfs/${{ needs.build.outputs.cid }})
-            [Service Worker Gateway Preview](https://inbrowser.link/ipfs/${{ needs.build.outputs.cid }})
+            📦 [Preview Gateway](https://w3s.link/ipfs/${{ needs.build.outputs.cid }})
+            🔗 [Service Worker Gateway](https://inbrowser.link/ipfs/${{ needs.build.outputs.cid }})
           edit-mode: replace
