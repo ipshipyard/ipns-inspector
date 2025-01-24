@@ -37,25 +37,12 @@ jobs:
           npm ci
           npm install -g ipfs-car
 
-      - name: Cache Next.js build
-        uses: actions/cache@v4
-        with:
-          path: |
-            .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
-          restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
-
       - name: Build project
         run: npm run build
 
       - name: Merkelize Build
         id: merklize
         run: |
-          if [ ! -d "out" ]; then
-            echo "::error::Build output directory 'out' not found"
-            exit 1
-          fi
           # Capture stderr to which the CID is printed. See https://github.com/storacha/ipfs-car/pull/169
           CID=$(npx ipfs-car pack out --no-wrap --output build.car 2>&1 | tail -n 1)
           echo "cid=$CID" >> "$GITHUB_OUTPUT"
