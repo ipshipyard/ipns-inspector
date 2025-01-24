@@ -54,7 +54,7 @@ jobs:
               sha: context.sha,
               state: 'success',
               target_url: url,
-              description: `Preview (${cid}) deployment ready`,
+              description: `CID: ${cid}`,
               context: 'IPFS Preview'
             });
 
