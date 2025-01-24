@@ -32,8 +32,8 @@ jobs:
         id: web3storage # 
         with:
           path_to_add: 'dist'
-          proof: ${{ secrets.W3_PROOF }}
-          secret_key: ${{ secrets.W3_PRINCIPAL }}
+          secret_key: ${{ secrets.STORACHA_KEY }}
+          proof: ${{ secrets.STORACHA_PROOF }}
 
       - name: Output CID
         run: echo ${{ steps.web3storage.outputs.cid }}
