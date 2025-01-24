@@ -56,8 +56,6 @@ jobs:
 
   publish-to-ipfs:
     runs-on: 'ubuntu-latest'
-    permissions:
-      statuses: write
     needs: 'build'
     if: success() && (github.event_name == 'push' || github.event_name == 'pull_request')
     steps:
