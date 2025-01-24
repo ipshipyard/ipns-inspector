@@ -52,7 +52,6 @@ jobs:
       - name: Merkelize Build
         id: merklize
         run: |
-          set -x
           if [ ! -d "out" ]; then
             echo "::error::Build output directory 'out' not found"
             exit 1
@@ -60,7 +59,7 @@ jobs:
           # Capture stderr to which the CID is printed. See https://github.com/storacha/ipfs-car/pull/169
           CID=$(npx ipfs-car pack out --no-wrap --output build.car 2>&1 | tail -n 1)
           echo "cid=$CID" >> "$GITHUB_OUTPUT"
-          echo $GITHUB_OUTPUT
+          echo $CID
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
