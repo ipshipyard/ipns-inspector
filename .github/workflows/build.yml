@@ -137,11 +137,11 @@ jobs:
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
           issue-number: ${{ github.event.pull_request.number }}
-          body: |
+          body: >
             ### 🚀 Build Preview on IPFS ready
 
             | Type | Link |
-            | --- | --- |
+            |------|------|
             | 🔏 CID | `${{ needs.build.outputs.cid }}` |
             | 📦 Preview | [Gateway](https://w3s.link/ipfs/${{ needs.build.outputs.cid }}) |
             | 🔗 Service Worker | [Gateway](https://inbrowser.link/ipfs/${{ needs.build.outputs.cid }}) |
