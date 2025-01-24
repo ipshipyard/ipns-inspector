@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: 'ubuntu-latest'
+    outputs:
+      cid: ${{ steps.merklize.outputs.cid }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,43 +26,60 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - run: npm install -g @web3-storage/w3cli ipfs-car
+
       - name: Build project
         run: npm run build
 
+      - name: Merkelize Build
+        id: merklize
+        run: |
+          CID=$(npx ipfs-car pack out --no-wrap --output build.car --silent | tail -n 1)
+          echo "cid=$CID" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output-car
+          path: build.car
+
   publish-to-ipfs:
+    runs-on: 'ubuntu-latest'
     needs: 'build'
     steps:
-      - run: npm install -g @web3-storage/w3cli
-
-      - run: w3 space add ${{ inputs.proof }}
-        env:
-          W3_PRINCIPAL: ${{ inputs.secret_key }}
-
-      - run: w3 up ${{ inputs.path_to_add }}
-        env:
-          W3_PRINCIPAL: ${{ inputs.secret_key }}
-
-      - name: Upload to IPFS
-        uses: web3-storage/add-to-web3@v3
-        id: web3storage # 
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          path_to_add: 'out'
-          secret_key: ${{ secrets.STORACHA_KEY }}
-          proof: ${{ secrets.STORACHA_PROOF }}
-          wrap: false # Not strictly needed since `out` is a folder, but good to make sure we don't wrap
+          name: build-output-car
+
+      - run: w3 space add ${{ secrets.STORACHA_PROOF }}
+        env:
+          W3_PRINCIPAL: ${{ secrets.STORACHA_KEY }}
+
+      - run: w3 up --car build.car
+        env:
+          W3_PRINCIPAL: ${{ secrets.STORACHA_KEY }}
+
+      # - name: Upload to IPFS
+      #   uses: web3-storage/add-to-web3@v3
+      #   id: web3storage
+      #   with:
+      #     path_to_add: 'out'
+      #     secret_key: ${{ secrets.STORACHA_KEY }}
+      #     proof: ${{ secrets.STORACHA_PROOF }}
+      #     wrap: false
 
       - name: Update commit status
         uses: actions/github-script@v7
         with:
           script: |
-            const url = '${{ steps.web3storage.outputs.url }}';
-            const cid = '${{ steps.web3storage.outputs.cid }}';
+            const cid = '${{ needs.build.outputs.cid }}';
             github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: context.sha,
               state: 'success',
-              target_url: url,
+              target_url: `https://w3s.link/ipfs/${cid}`,
               description: `CID: ${cid}`,
               context: 'IPFS Preview'
             });
@@ -83,7 +102,7 @@ jobs:
           body: |
             ### 🚀 Build Preview on IPFS ready
 
-            CID: `${{ steps.web3storage.outputs.cid }}`
-            Preview Deployment: ${{ steps.web3storage.outputs.url }}
-            Service Worker Gateway Preview: https://inbrowser.link/ipfs/${{ steps.web3storage.outputs.cid }})
+            🔏 CID: `${{ needs.build.outputs.cid }}`
+            [Preview Deployment](https://w3s.link/ipfs/${{ needs.build.outputs.cid }})
+            [Service Worker Gateway Preview](https://inbrowser.link/ipfs/${{ needs.build.outputs.cid }})
           edit-mode: replace
