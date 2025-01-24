@@ -56,7 +56,7 @@ jobs:
             echo "::error::Build output directory 'out' not found"
             exit 1
           fi
-          CID=$(npx ipfs-car pack out --no-wrap --output build.car | tail -n 1)
+          CID=$(npx ipfs-car pack out --no-wrap --output build.car)
           if [ -z "$CID" ]; then
             echo "::error::Failed to generate CID"
             exit 1
