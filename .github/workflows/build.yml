@@ -1,5 +1,11 @@
 name: Build and Publish to IPFS
 
+# Explicitly declare permissions
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
 on:
   push:
     branches:
@@ -27,9 +33,18 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm install -g ipfs-car
 
-      - run: npm install -g ipfs-car
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: |
+            .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
       - name: Build project
         run: npm run build
@@ -37,7 +52,15 @@ jobs:
       - name: Merkelize Build
         id: merklize
         run: |
+          if [ ! -d "out" ]; then
+            echo "::error::Build output directory 'out' not found"
+            exit 1
+          fi
           CID=$(npx ipfs-car pack out --no-wrap --output build.car | tail -n 1)
+          if [ -z "$CID" ]; then
+            echo "::error::Failed to generate CID"
+            exit 1
+          fi
           echo "cid=$CID" >> "$GITHUB_OUTPUT"
 
       - name: Upload build artifacts
@@ -49,7 +72,15 @@ jobs:
   publish-to-ipfs:
     runs-on: 'ubuntu-latest'
     needs: 'build'
+    if: success() && (github.event_name == 'push' || github.event_name == 'pull_request')
     steps:
+      - name: Check required secrets
+        run: |
+          if [ -z "${{ secrets.STORACHA_KEY }}" ] || [ -z "${{ secrets.STORACHA_PROOF }}" ]; then
+            echo "::error::Missing required secrets STORACHA_KEY and/or STORACHA_PROOF"
+            exit 1
+          fi
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -67,7 +98,14 @@ jobs:
         run: |
           npm install -g @web3-storage/w3cli
           w3 space add ${{ secrets.STORACHA_PROOF }}
-          w3 up --car build.car
+          # Delete previous CARs - disabled for now
+          # w3 ls | while read -r cid; do
+          #   w3 rm --shards "$cid"
+          # done
+          if ! w3 up --car build.car; then
+            echo "::error::Failed to upload to IPFS"
+            exit 1
+          fi
 
       - name: Update commit status
         uses: actions/github-script@v7
