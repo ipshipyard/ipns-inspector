@@ -34,6 +34,7 @@ jobs:
           path_to_add: 'out'
           secret_key: ${{ secrets.STORACHA_KEY }}
           proof: ${{ secrets.STORACHA_PROOF }}
+          wrap: false # Not strictly needed since `out` is a folder, but good to make sure we don't wrap
 
       - name: Output CID
         run: echo ${{ steps.web3storage.outputs.cid }}
@@ -46,25 +47,36 @@ jobs:
         with:
           script: |
             const url = '${{ steps.web3storage.outputs.url }}';
+            const cid = '${{ steps.web3storage.outputs.cid }}';
             github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: context.sha,
               state: 'success',
               target_url: url,
-              description: `Preview (${steps.web3storage.outputs.cid}) deployment ready`,
+              description: `Preview (${cid}) deployment ready`,
               context: 'IPFS Preview'
             });
-      - name: Comment on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const url = '${{ steps.web3storage.outputs.url }}';
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `🚀 Preview ${steps.web3storage.outputs.cid} deployment available at: ${url}`
-            });
 
+      - name: Find Comment to update
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/find-comment@v3
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '🚀 Building'
+
+      - name: Create or update comment
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### 🚀 Build Preview on IPFS ready
+
+            CID: `${{ steps.web3storage.outputs.cid }}`
+            Preview Deployment: ${{ steps.web3storage.outputs.url }}
+            Service Worker Gateway Preview: https://inbrowser.link/ipfs/${{ steps.web3storage.outputs.cid }})
+          edit-mode: replace
