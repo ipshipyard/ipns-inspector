@@ -36,12 +36,6 @@ jobs:
           proof: ${{ secrets.STORACHA_PROOF }}
           wrap: false # Not strictly needed since `out` is a folder, but good to make sure we don't wrap
 
-      - name: Output CID
-        run: echo ${{ steps.web3storage.outputs.cid }}
-
-      - name: Output URL
-        run: echo ${{ steps.web3storage.outputs.url }}
-
       - name: Update commit status
         uses: actions/github-script@v7
         with:
