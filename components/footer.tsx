@@ -17,7 +17,7 @@ export default function Footer() {
               clipRule="evenodd"
             />
           </svg>
-          Source Code
+          Source
         </a>
         <a
           href="https://specs.ipfs.tech/ipns/ipns-record/"
