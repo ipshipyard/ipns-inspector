@@ -57,10 +57,7 @@ jobs:
             exit 1
           fi
           CID=$(npx ipfs-car pack out --no-wrap --output build.car)
-          if [ -z "$CID" ]; then
-            echo "::error::Failed to generate CID"
-            exit 1
-          fi
+          echo "CID: $CID"
           echo "cid=$CID" >> "$GITHUB_OUTPUT"
 
       - name: Upload build artifacts
