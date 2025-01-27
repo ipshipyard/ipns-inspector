@@ -25,7 +25,7 @@ export type Events =
 
 export interface Context {
   error: string | Error | null // general error
-  nameValidationError: string | null // name validation error
+  nameValidationError: boolean // name validation error
   nameInput: string // name input field
   name: string // The IPNS name either inspecting (either fetched or created)
   record?: IPNSRecord // the record fetched or created
@@ -36,6 +36,7 @@ export interface Context {
   }
   fetchingRecord: boolean
   publishingRecord: boolean
+  publishSuccess: boolean
   heliaInstance?: Helia
   ipns?: IPNS
 }
@@ -61,15 +62,12 @@ export const ipnsMachine = setup({
         let peerId: PeerId
         try {
           peerId = getPeerIdFromString(name)
-          if (!peerId.publicKey) {
-            throw new Error()
-          }
         } catch (error) {
           console.error(error)
-          throw new Error('Invalid IPNS Name. IPNS names must be base36 encoded CIDs')
+          throw new Error('Invalid IPNS name')
         }
 
-        return ipns.resolve(peerId.publicKey, { nocache: true })
+        return ipns.resolve(peerId.publicKey || peerId.toMultihash(), { nocache: true })
       },
     ),
     createRecord: fromPromise<
@@ -91,9 +89,10 @@ export const ipnsMachine = setup({
     name: '',
     nameInput: '',
     error: null,
-    nameValidationError: null,
+    nameValidationError: false,
     fetchingRecord: false,
     publishingRecord: false,
+    publishSuccess: false,
     formData: {
       value: '',
       lifetime: DEFAULT_LIFETIME_MS,
@@ -114,17 +113,14 @@ export const ipnsMachine = setup({
           nameInput: ({ event }) => event.value,
           nameValidationError: ({ event }) => {
             if (!event.validate) {
-              return null
+              return false
             }
             try {
-              const peerId = getPeerIdFromString(event.value)
-              if (!peerId.publicKey) {
-                return 'Invalid IPNS Name: Missing public key'
-              }
-              return null
+              getPeerIdFromString(event.value)
+              return false
             } catch (error) {
               console.error(error)
-              return 'Invalid IPNS Name. IPNS names must be base36 encoded CIDs'
+              return true
             }
           },
         }),
@@ -160,7 +156,7 @@ export const ipnsMachine = setup({
         UPDATE_MODE: {
           actions: assign({
             nameInput: '',
-            nameValidationError: null,
+            nameValidationError: false,
             record: undefined,
           }),
           target: 'create',
@@ -195,6 +191,10 @@ export const ipnsMachine = setup({
       },
     },
     create: {
+      entry: assign({
+        nameValidationError: false,
+        publishSuccess: false,
+      }),
       on: {
         CREATE_RECORD: {
           target: 'creatingRecord',
@@ -275,18 +275,21 @@ export const ipnsMachine = setup({
           publish: true,
         }),
         onDone: {
-          target: 'create',
+          target: 'inspect',
           actions: assign({
             record: ({ event }) => event.output,
+            publishSuccess: true,
+            error: null,
           }),
         },
         onError: {
           target: 'create',
           actions: assign({
             error: ({ event }) => event.error as Error,
+            publishSuccess: false,
           }),
         },
       },
-    },
+    }
   },
 })
