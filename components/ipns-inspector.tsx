@@ -204,15 +204,44 @@ export default function IPNSInspector() {
                 </div>
               </div>
 
-              {/* <div className="space-y-2">
-                <label className="block text-sm font-medium">TTL (seconds)</label>
-                <Input
-                  type="number"
-                  value={state.context.formData.ttl}
-                  onChange={(e) => send({ type: 'UPDATE_FORM', field: 'ttl', value: e.target.value })}
-                  min="1"
-                />
-              </div> */}
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
+                  <label className="block text-sm font-medium">TTL (milliseconds)</label>
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild={false}>
+                        <InfoIcon className="w-4 h-4 text-blue-700" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
+                          Time-to-live: How long resolvers should cache this record in milliseconds
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="flex gap-1 items-center">
+                  <Input
+                    type="number"
+                    value={state.context.formData.ttlMs}
+                    onChange={(e) => send({ type: 'UPDATE_FORM', field: 'ttlMs', value: e.target.value })}
+                    min="1"
+                    placeholder="60000"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => send({ type: 'UPDATE_FORM', field: 'ttlMs', value: (60 * 1000).toString() })}
+                  >
+                    1 min
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => send({ type: 'UPDATE_FORM', field: 'ttlMs', value: (60 * 60 * 1000).toString() })}
+                  >
+                    1 hour
+                  </Button>
+                </div>
+              </div>
 
               {/* <div className="space-y-2">
                 <label className="block text-sm font-medium">Sequence Number</label>

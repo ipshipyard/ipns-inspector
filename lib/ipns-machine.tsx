@@ -33,6 +33,7 @@ export interface Context {
   formData: {
     value: string // the value field for the IPNS record to publish
     lifetime: number // the lifetime field for the IPNS record to publish
+    ttlMs: number // Add TTL field
   }
   fetchingRecord: boolean
   publishingRecord: boolean
@@ -79,6 +80,7 @@ export const ipnsMachine = setup({
       return ipns.publish(keypair, cid, {
         lifetime: formData.lifetime,
         offline: !publish,
+        ttl: formData.ttlMs,
       })
     }),
   },
@@ -94,8 +96,9 @@ export const ipnsMachine = setup({
     publishingRecord: false,
     publishSuccess: false,
     formData: {
-      value: '',
+      value: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
       lifetime: DEFAULT_LIFETIME_MS,
+      ttlMs: 60 * 1000, // Default TTL of 60 seconds in milliseconds
     },
   },
   on: {
