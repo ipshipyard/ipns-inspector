@@ -71,7 +71,7 @@ export default function IPNSInspector() {
                       onClick={() => send({ type: 'INSPECT_NAME' })}
                       disabled={
                         isLoading ||
-                        !state.context.nameValidationError ||
+                        state.context.nameValidationError ||
                         state.context.nameInput?.length === 0
                       }
                     >
