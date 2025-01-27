@@ -96,18 +96,11 @@ jobs:
         with:
           script: |
             const cid = '${{ needs.build.outputs.cid }}';
-            console.log('Debug info:');
-            console.log('Event name:', context.eventName);
-            console.log('SHA:', context.sha);
-            console.log('Ref:', context.ref);
-            console.log('Pull Request:', context.payload.pull_request);
 
             // For PR events, we need to use the head SHA
             const sha = context.eventName === 'pull_request'
               ? context.payload.pull_request.head.sha
               : context.sha;
-
-            console.log('Using SHA:', sha);
 
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
