@@ -3,12 +3,13 @@ import { useMachine } from '@xstate/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { type IPNSRecord, marshalIPNSRecord } from 'ipns'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
-import { KeyRound, InfoIcon, CheckCircle2 } from 'lucide-react'
+import { KeyRound, InfoIcon, CheckCircle2, Download } from 'lucide-react'
 import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { Tooltip } from '@radix-ui/react-tooltip'
@@ -26,6 +27,19 @@ interface RecordFieldProps {
   label: string
   value: string
   monospace?: boolean
+}
+
+const downloadRecord = (name: string, record?: IPNSRecord) => {
+  if (!record) return
+  const blob = new Blob([marshalIPNSRecord(record)], { type: 'application/vnd.ipfs.ipns-record' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${name}.ipns-record`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 // Simplified component
@@ -216,7 +230,7 @@ export default function IPNSInspector() {
                   disabled={isLoading || state.context.keypair == null}
                   className="w-full"
                 >
-                  Create and Ispect Record
+                  Create and Inspect Record
                 </Button>
                 <Button
                   onClick={() => send({ type: 'PUBLISH_RECORD' })}
@@ -258,12 +272,25 @@ export default function IPNSInspector() {
 
           {state.context.record && (
             <div className="mt-4 p-4 bg-amber-50 rounded">
-              <h3 className="font-medium mb-2 break-all">
-                IPNS Name: <span className="text-amber-600">{state.context.name}</span>
-              </h3>
-              <h3 className="font-medium mb-2">
-                IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}
-              </h3>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="font-medium break-all">
+                    IPNS Name: <span className="text-amber-600">{state.context.name}</span>
+                  </h3>
+                  <h3 className="font-medium">
+                    IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}
+                  </h3>
+                </div>
+                <Button
+                  onClick={() => downloadRecord(state.context.name, state.context.record)}
+                  variant="outline"
+                  size="sm"
+                  title="Download IPNS Record"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+              </div>
               <div className="grid grid-cols-1 gap-3">
                 <RecordField label="Value" value={state.context.record.value} />
                 <RecordField label="Validity Type" value={state.context.record.validityType} />

@@ -41,7 +41,7 @@ export interface Context {
   ipns?: IPNS
 }
 
-// Simplified machine
+
 export const ipnsMachine = setup({
   types: {
     context: {} as Context,
