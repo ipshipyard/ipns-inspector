@@ -111,7 +111,7 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.FILEBASE_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.FILEBASE_SECRET_KEY }}
-          FILEBASE_BUCKET: ${{ secrets.FILEBASE_BUCKET }}
+          FILEBASE_BUCKET: ${{ vars.FILEBASE_BUCKET }}
         run: |
           aws --endpoint https://s3.filebase.com s3 cp build.car s3://${FILEBASE_BUCKET} --debug --metadata 'import=car'
 
