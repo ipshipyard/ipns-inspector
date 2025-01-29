@@ -148,11 +148,11 @@ jobs:
         with:
           name: kubo
           version: '${{ inputs.kubo-version }}'
-      - run: |
+      - name: Pin CID to Pinata
+        run: |
           ipfs init
           ipfs pin remote service add pinata "${{ inputs.pinata-pinning-url }}" ${{ secrets.PINATA_JWT_TOKEN }}
-          ipfs pin remote add --service=pinata ${{ needs.build.outputs.cid }}
-
+          ipfs pin remote add --service=pinata --name="build-${{ github.event.pull_request.head.sha }}" ${{ needs.build.outputs.cid }}
 
   update-commit-status:
     runs-on: 'ubuntu-latest'
@@ -196,6 +196,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ### 🚀 Build Preview on IPFS ready
+            - 🔎 Commit: ${{ github.event.pull_request.head.sha }}
             - 🔏 CID `${{ needs.build.outputs.cid }}`
             - 📦 [Preview](https://w3s.link/ipfs/${{ needs.build.outputs.cid }})
             - 🔗 [Service Worker Preview](https://inbrowser.link/ipfs/${{ needs.build.outputs.cid }})
