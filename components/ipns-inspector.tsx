@@ -3,19 +3,21 @@ import { useMachine } from '@xstate/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { type IPNSRecord, marshalIPNSRecord } from 'ipns'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
-import { KeyRound, InfoIcon } from 'lucide-react'
+import { KeyRound, InfoIcon, CheckCircle2, Download } from 'lucide-react'
 import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { Tooltip } from '@radix-ui/react-tooltip'
 
-
 const MAX_VALIDITY = 365 * 24 * 60 * 60 // 1 year in seconds
 const DAY_MS = 24 * 60 * 60 * 1000
+
+export const NAME_VALIDATION_ERROR = 'IPNS names must be base36 encoded CIDs or base58 encoded libp2p PeerIDs'
 
 const inspector = createBrowserInspector({
   autoStart: false,
@@ -27,6 +29,19 @@ interface RecordFieldProps {
   monospace?: boolean
 }
 
+const downloadRecord = (name: string, record?: IPNSRecord) => {
+  if (!record) return
+  const blob = new Blob([marshalIPNSRecord(record)], { type: 'application/vnd.ipfs.ipns-record' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${name}.ipns-record`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 // Simplified component
 export default function IPNSInspector() {
   const [state, send] = useMachine(ipnsMachine, {
@@ -34,6 +49,11 @@ export default function IPNSInspector() {
   })
   const isLoading = state.value === 'init'
   console.log(state.value, state.context)
+  const mode =
+    state.value === 'create' || state.value === 'creatingRecord' || state.value === 'publishingRecord'
+      ? 'create'
+      : 'inspect'
+  const { error } = state.context
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -41,10 +61,7 @@ export default function IPNSInspector() {
         <CardTitle>IPNS Record Inspector & Creator</CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs
-          value={state.value}
-          onValueChange={(value) => send({ type: 'UPDATE_MODE', value: value as Mode })}
-        >
+        <Tabs value={mode} onValueChange={(value) => send({ type: 'UPDATE_MODE', value: value as Mode })}>
           <TabsList className="mb-4">
             <TabsTrigger value="inspect">Inspect Record</TabsTrigger>
             <TabsTrigger value="create">Create Record</TabsTrigger>
@@ -68,7 +85,7 @@ export default function IPNSInspector() {
                       onClick={() => send({ type: 'INSPECT_NAME' })}
                       disabled={
                         isLoading ||
-                        state.context.nameValidationError != null ||
+                        state.context.nameValidationError ||
                         state.context.nameInput?.length === 0
                       }
                     >
@@ -78,7 +95,7 @@ export default function IPNSInspector() {
                 </div>
                 {state.context.nameValidationError && (
                   <Alert variant="destructive" className="mt-4">
-                    <AlertDescription>{state.context.nameValidationError}</AlertDescription>
+                    <AlertDescription>{NAME_VALIDATION_ERROR}</AlertDescription>
                   </Alert>
                 )}
               </div>
@@ -187,15 +204,44 @@ export default function IPNSInspector() {
                 </div>
               </div>
 
-              {/* <div className="space-y-2">
-                <label className="block text-sm font-medium">TTL (seconds)</label>
-                <Input
-                  type="number"
-                  value={state.context.formData.ttl}
-                  onChange={(e) => send({ type: 'UPDATE_FORM', field: 'ttl', value: e.target.value })}
-                  min="1"
-                />
-              </div> */}
+              <div className="space-y-2">
+                <div className="flex gap-2 items-center">
+                  <label className="block text-sm font-medium">TTL (milliseconds)</label>
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild={false}>
+                        <InfoIcon className="w-4 h-4 text-blue-700" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
+                          Time-to-live: How long resolvers should cache this record in milliseconds
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <div className="flex gap-1 items-center">
+                  <Input
+                    type="number"
+                    value={state.context.formData.ttlMs}
+                    onChange={(e) => send({ type: 'UPDATE_FORM', field: 'ttlMs', value: e.target.value })}
+                    min="1"
+                    placeholder="60000"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => send({ type: 'UPDATE_FORM', field: 'ttlMs', value: (60 * 1000).toString() })}
+                  >
+                    1 min
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => send({ type: 'UPDATE_FORM', field: 'ttlMs', value: (60 * 60 * 1000).toString() })}
+                  >
+                    1 hour
+                  </Button>
+                </div>
+              </div>
 
               {/* <div className="space-y-2">
                 <label className="block text-sm font-medium">Sequence Number</label>
@@ -213,7 +259,7 @@ export default function IPNSInspector() {
                   disabled={isLoading || state.context.keypair == null}
                   className="w-full"
                 >
-                  Create and Ispect Record
+                  Create and Inspect Record
                 </Button>
                 <Button
                   onClick={() => send({ type: 'PUBLISH_RECORD' })}
@@ -227,20 +273,53 @@ export default function IPNSInspector() {
             </div>
           </TabsContent>
 
-          {state.context.error && (
+          {error && (
             <Alert variant="destructive" className="mt-4">
-              <AlertDescription>{state.context.error.toString()}</AlertDescription>
+              <AlertDescription>{error.toString()}</AlertDescription>
+            </Alert>
+          )}
+          {state.context.publishSuccess && (
+            <Alert className="mt-4 bg-green-50 border-green-200">
+              <div className="flex gap-2 items-center">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span className="text-green-800">IPNS record published to the DHT successfully!</span>
+                <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild={false}>
+                          <InfoIcon className="w-4 h-4 text-blue-700" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
+                            The IPNS name should be resolvable for the next 48 hours(the DHT expiration interval)
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+              </div>
             </Alert>
           )}
 
           {state.context.record && (
-            <div className="mt-4 p-4 bg-teal-50 rounded">
-              <h3 className="font-medium mb-2 break-all">
-                IPNS Name: <span className="text-teal-600">{state.context.name}</span>
-              </h3>
-              <h3 className="font-medium mb-2">
-                IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}
-              </h3>
+            <div className="mt-4 p-4 bg-amber-50 rounded">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="font-medium break-all">
+                    IPNS Name: <span className="text-amber-600">{state.context.name}</span>
+                  </h3>
+                  <h3 className="font-medium">
+                    IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}
+                  </h3>
+                </div>
+                <Button
+                  onClick={() => downloadRecord(state.context.name, state.context.record)}
+                  variant="outline"
+                  size="sm"
+                  title="Download IPNS Record"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+              </div>
               <div className="grid grid-cols-1 gap-3">
                 <RecordField label="Value" value={state.context.record.value} />
                 <RecordField label="Validity Type" value={state.context.record.validityType} />
