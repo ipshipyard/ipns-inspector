@@ -26,7 +26,7 @@ jobs:
       kubo-version: 'v0.33.0-rc3'
       build-command: 'npm run build'
       build-output-dir: 'out'
-      pin-to-pinata: true
+      pinata: true
     secrets:
       STORACHA_KEY: ${{ secrets.STORACHA_KEY }}
       STORACHA_PROOF: ${{ secrets.STORACHA_PROOF }}
