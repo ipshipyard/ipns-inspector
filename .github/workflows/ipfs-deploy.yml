@@ -158,9 +158,9 @@ jobs:
         run: |
           ipfs init
           ipfs pin remote service add pinata "${{ inputs.pinata-pinning-url }}" ${{ secrets.PINATA_JWT_TOKEN }}
-          ipfs pin remote add --service=pinata --name="build-${{ github.event.pull_request.head.sha }}" ${{ needs.build.outputs.cid }}
+          ipfs pin remote add --service=pinata --background --name="build-${{ github.event.pull_request.head.sha }}" ${{ needs.build.outputs.cid }}
 
-  update-commit-status:
+  github-status:
     runs-on: 'ubuntu-latest'
     needs: ['build', 'upload-car-to-storacha']
     steps:
