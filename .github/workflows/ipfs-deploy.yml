@@ -9,8 +9,8 @@ on:
         required: false
         type: string
       kubo-version:
-        description: 'Kubo version to use for pinning'
-        default: '0.32.1'
+        description: 'Kubo version to use for pinning https://dist.ipfs.tech/kubo/versions'
+        default: 'v0.33.0-rc3'
         required: false
         type: string
       build-command:
