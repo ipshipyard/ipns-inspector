@@ -48,11 +48,11 @@ on:
       STORACHA_PROOF:
         required: true
       FILEBASE_SECRET_KEY:
-        required: ${{ inputs.filebase == 'true' }}
+        required: false
       FILEBASE_ACCESS_KEY:
-        required: ${{ inputs.filebase == 'true' }}
+        required: false
       PINATA_JWT_TOKEN:
-        required: ${{ inputs.pinata == true }}
+        required: false
     outputs:
       cid:
         description: 'The IPFS CID of the uploaded content'
