@@ -1,4 +1,4 @@
-name: IPFS Deploy Reusable Workflow
+name: Build and Pin to IPFS
 
 on:
   workflow_call:
@@ -8,16 +8,35 @@ on:
         default: '20'
         required: false
         type: string
+      kubo-version:
+        description: 'Kubo version to use for pinning'
+        default: '0.32.1'
+        required: false
+        type: string
       build-command:
         description: 'Command to build the project'
         default: 'npm run build'
         required: false
         type: string
       build-output-dir:
-        description: 'Directory containing build output'
+        description: 'Directory containing build output that will be merkelized'
         default: 'out'
         required: false
         type: string
+      pinata-pinning-url:
+        description: 'Pinata Pinning Service URL'
+        default: 'https://api.pinata.cloud/psa'
+        required: false
+        type: string
+      filebase-bucket:
+        description: 'Filebase bucket name'
+        required: false
+        type: string
+      upload-to-filebase:
+        description: 'Whether to upload to Filebase (requires paid account for html uploads)'
+        default: false
+        required: false
+        type: boolean
     secrets:
       STORACHA_KEY:
         required: true
@@ -27,9 +46,11 @@ on:
         required: true
       FILEBASE_ACCESS_KEY:
         required: true
+      PINATA_JWT_TOKEN:
+        required: true
     outputs:
       cid:
-        description: "The IPFS CID of the uploaded content"
+        description: 'The IPFS CID of the uploaded content'
         value: ${{ jobs.build.outputs.cid }}
 
 permissions:
@@ -76,7 +97,6 @@ jobs:
   upload-car-to-storacha:
     runs-on: 'ubuntu-latest'
     needs: 'build'
-    if: success()
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -98,11 +118,11 @@ jobs:
             echo "::error::Failed to upload to IPFS"
             exit 1
           fi
-
+  # Upload the CAR to
   upload-car-to-filebase:
     runs-on: 'ubuntu-latest'
     needs: 'build'
-    if: success()
+    if: inputs.upload-to-filebase == 'true'
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -113,13 +133,29 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.FILEBASE_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.FILEBASE_SECRET_KEY }}
-          FILEBASE_BUCKET: ${{ vars.FILEBASE_BUCKET }}
+          FILEBASE_BUCKET: ${{ inputs.filebase-bucket }}
         run: |
           aws --endpoint https://s3.filebase.com s3 cp build.car s3://${FILEBASE_BUCKET} --debug --metadata 'import=car'
 
+  # Once CAR has been uploaded to storacha, pin it to Pinata so we have multiple providers.
+  # With the Pinning API, we just instruct Pinata to fetch and pin the blocks of the build.
+  # Uploading CAR would be better (since its explciit) but Pinata doesn't support CAR uploads
+  pin-cid-to-pinata:
+    runs-on: 'ubuntu-latest'
+    needs: ['build', 'upload-car-to-storacha']
+    steps:
+      - uses: ipfs/download-ipfs-distribution-action@v1
+        with:
+          name: kubo
+          version: '${{ inputs.kubo-version }}'
+      - run: |
+          ipfs init
+          ipfs pin remote service add pinata "${{ inputs.pinata-pinning-url }}" ${{ secrets.PINATA_JWT_TOKEN }}
+          ipfs pin add ${{ needs.build.outputs.cid }}
+
   update-commit-status:
     runs-on: 'ubuntu-latest'
-    needs: ['build', 'upload-car-to-storacha', 'upload-car-to-filebase']
+    needs: ['build', 'upload-car-to-storacha']
     steps:
       - name: Update commit status
         uses: actions/github-script@v7
@@ -162,4 +198,4 @@ jobs:
             - 🔏 CID `${{ needs.build.outputs.cid }}`
             - 📦 [Preview](https://w3s.link/ipfs/${{ needs.build.outputs.cid }})
             - 🔗 [Service Worker Preview](https://inbrowser.link/ipfs/${{ needs.build.outputs.cid }})
-          edit-mode: replace 
+          edit-mode: replace

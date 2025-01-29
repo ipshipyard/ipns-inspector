@@ -20,10 +20,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-and-deploy:
     uses: ./.github/workflows/ipfs-deploy.yml
     with:
       node-version: '20'
+      kubo-version: '0.32.1'
       build-command: 'npm run build'
       build-output-dir: 'out'
     secrets:
