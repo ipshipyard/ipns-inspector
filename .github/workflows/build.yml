@@ -32,3 +32,4 @@ jobs:
       STORACHA_PROOF: ${{ secrets.STORACHA_PROOF }}
       FILEBASE_SECRET_KEY: ${{ secrets.FILEBASE_SECRET_KEY }}
       FILEBASE_ACCESS_KEY: ${{ secrets.FILEBASE_ACCESS_KEY }}
+      PINATA_JWT_TOKEN: ${{ secrets.PINATA_JWT_TOKEN }}
