@@ -76,7 +76,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          npm install -g ipfs-car
+          npm install -g ipfs-car@2
 
       - name: Build project
         run: ${{ inputs.build-command }}
