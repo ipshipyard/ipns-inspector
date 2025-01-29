@@ -26,11 +26,10 @@ jobs:
       kubo-version: 'v0.33.0-rc3'
       build-command: 'npm run build'
       build-output-dir: 'out'
+      pin-to-pinata: true
     secrets:
       STORACHA_KEY: ${{ secrets.STORACHA_KEY }}
       STORACHA_PROOF: ${{ secrets.STORACHA_PROOF }}
-      FILEBASE_SECRET_KEY: ${{ secrets.FILEBASE_SECRET_KEY }}
-      FILEBASE_ACCESS_KEY: ${{ secrets.FILEBASE_ACCESS_KEY }}
       PINATA_JWT_TOKEN: ${{ secrets.PINATA_JWT_TOKEN }}
   update-dnslink:
     runs-on: 'ubuntu-latest'
