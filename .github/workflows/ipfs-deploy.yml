@@ -151,7 +151,8 @@ jobs:
       - run: |
           ipfs init
           ipfs pin remote service add pinata "${{ inputs.pinata-pinning-url }}" ${{ secrets.PINATA_JWT_TOKEN }}
-          ipfs pin add ${{ needs.build.outputs.cid }}
+          ipfs pin remote add --service=pinata ${{ needs.build.outputs.cid }}
+
 
   update-commit-status:
     runs-on: 'ubuntu-latest'
