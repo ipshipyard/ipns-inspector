@@ -118,7 +118,7 @@ jobs:
             echo "::error::Failed to upload to IPFS"
             exit 1
           fi
-  # Upload the CAR to
+  # Upload the CAR to Filebase
   upload-car-to-filebase:
     runs-on: 'ubuntu-latest'
     needs: 'build'
@@ -135,7 +135,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.FILEBASE_SECRET_KEY }}
           FILEBASE_BUCKET: ${{ inputs.filebase-bucket }}
         run: |
-          aws --endpoint https://s3.filebase.com s3 cp build.car s3://${FILEBASE_BUCKET} --debug --metadata 'import=car'
+          aws --endpoint https://s3.filebase.com s3 cp build.car s3://${FILEBASE_BUCKET} --metadata 'import=car'
 
   # Once CAR has been uploaded to storacha, pin it to Pinata so we have multiple providers.
   # With the Pinning API, we just instruct Pinata to fetch and pin the blocks of the build.
