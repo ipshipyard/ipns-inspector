@@ -43,7 +43,7 @@ jobs:
           name: build-output
           path: out
 
-      - uses: '../actions/deploy-to-ipfs/action.yml'
+      - uses: ./.github/actions/deploy-to-ipfs
         id: deploy
         with:
           path-to-deploy: out
