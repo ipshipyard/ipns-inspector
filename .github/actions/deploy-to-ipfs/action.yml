@@ -64,7 +64,7 @@ runs:
         CID=$(npx ipfs-car pack ${{ inputs.path-to-deploy }} --no-wrap --output build.car 2>&1 | tail -n 1)
         echo "cid=$CID" >> "$GITHUB_OUTPUT"
         echo $CID
-        echo "✅ Merkleized ${{ inputs.path-to-deploy }} into CAR file" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Merkleized path: `{{ inputs.path-to-deploy }}` into CAR file with root CID $CID" >> $GITHUB_STEP_SUMMARY
 
 
     - name: Configure and upload CAR to Storacha
@@ -73,14 +73,21 @@ runs:
         W3_PRINCIPAL: ${{ inputs.storacha-key }}
       run: |
         npm install -g @web3-storage/w3cli
-        echo "ℹ️ Uploading CAR with CID ${{ steps.merkleize.outputs.cid }} to IPFS"
+        echo "ℹ️ Uploading CAR with CID ${{ steps.merkleize.outputs.cid }} to Storacha"
         w3 space add ${{ inputs.storacha-proof }}
         if ! w3 up --car build.car; then
-          echo "::error::Failed to upload to IPFS"
+          echo "::error::Failed to upload to Storacha"
           exit 1
         else
-          echo "✅ Uploaded CAR with CID ${{ steps.merkleize.outputs.cid }} to IPFS" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Uploaded CAR with CID ${{ steps.merkleize.outputs.cid }} to Storacha" >> $GITHUB_STEP_SUMMARY
+
+          echo "### 🚀 Build Preview on IPFS ready" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔎 Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔏 CID `${{ steps.merkleize.outputs.cid }}`" >> $GITHUB_STEP_SUMMARY
+          echo "- 📦 [Preview](https://w3s.link/ipfs/${{ steps.merkleize.outputs.cid }})" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔗 [Service Worker Preview](https://inbrowser.link/ipfs/${{ steps.merkleize.outputs.cid }})" >> $GITHUB_STEP_SUMMARY
         fi
+
 
     - name: Upload CAR to Filebase
       if: ${{ inputs.filebase-access-key != '' }}
@@ -92,6 +99,12 @@ runs:
       run: |
         echo "ℹ️ Uploading CAR with CID ${{ steps.merkleize.outputs.cid }} to Filebase"
         aws --endpoint https://s3.filebase.com s3 cp build.car s3://${FILEBASE_BUCKET} --metadata 'import=car'
+        if [ $? -eq 0 ]; then
+          echo "✅ Uploaded CAR with CID ${{ steps.merkleize.outputs.cid }} to Filebase" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "::error::Failed to upload to Filebase"
+          exit 1
+        fi
 
     - name: Setup Kubo
       if: ${{ inputs.pinata-jwt-token != ''}}
@@ -117,15 +130,11 @@ runs:
         script: |
           const cid = '${{ steps.merkleize.outputs.cid }}';
 
-          // For PR events, we need to use the head SHA
-          const sha = context.eventName === 'pull_request'
-            ? context.payload.pull_request.head.sha
-            : context.sha;
 
           await github.rest.repos.createCommitStatus({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            sha: sha,
+            sha: github.sha,
             state: 'success',
             target_url: `https://w3s.link/ipfs/${cid}`,
             description: `CID: ${cid}`,
@@ -151,7 +160,7 @@ runs:
         issue-number: ${{ github.event.pull_request.number }}
         body: |
           ### 🚀 Build Preview on IPFS ready
-          - 🔎 Commit: ${{ github.event.pull_request.head.sha }}
+          - 🔎 Commit: ${{ github.sha }}
           - 🔏 CID `${{ steps.merkleize.outputs.cid }}`
           - 📦 [Preview](https://w3s.link/ipfs/${{ steps.merkleize.outputs.cid }})
           - 🔗 [Service Worker Preview](https://inbrowser.link/ipfs/${{ steps.merkleize.outputs.cid }})
