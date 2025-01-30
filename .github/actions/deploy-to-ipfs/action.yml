@@ -14,7 +14,7 @@ inputs:
     default: 'v0.33.0'
     required: false
   path-to-deploy:
-    description: 'Path to the directory containing the frontend build to merkelize into a CAR file and deploy to IPFS'
+    description: 'Path to the directory containing the frontend build to merkleize into a CAR file and deploy to IPFS'
     required: true
   storacha-key:
     description: 'Storacha key for authentication'
@@ -47,7 +47,7 @@ inputs:
 outputs:
   cid:
     description: 'The IPFS CID of the uploaded content'
-    value: ${{ steps.merkelize.outputs.cid }}
+    value: ${{ steps.merkleize.outputs.cid }}
 
 runs:
   using: "composite"
@@ -56,7 +56,7 @@ runs:
       shell: bash
       run: npm install -g ipfs-car@2
 
-    - name: Merkelize into CAR file
+    - name: Merkleize into CAR file
       id: merkleize
       shell: bash
       run: |
@@ -99,7 +99,7 @@ runs:
       run: |
         ipfs init
         ipfs pin remote service add pinata "${{ inputs.pinata-pinning-url }}" ${{ inputs.pinata-jwt-token }}
-        ipfs pin remote add --service=pinata --background --name="build-${{ github.sha }}" ${{ steps.merkelize.outputs.cid }}
+        ipfs pin remote add --service=pinata --background --name="build-${{ github.sha }}" ${{ steps.merkleize.outputs.cid }}
 
     - name: Set GitHub commit status
       if: ${{ inputs.set-github-status }}
@@ -107,7 +107,7 @@ runs:
       with:
         github-token: ${{ inputs.github-token }}
         script: |
-          const cid = '${{ steps.merkelize.outputs.cid }}';
+          const cid = '${{ steps.merkleize.outputs.cid }}';
 
           // For PR events, we need to use the head SHA
           const sha = context.eventName === 'pull_request'
@@ -144,7 +144,7 @@ runs:
         body: |
           ### 🚀 Build Preview on IPFS ready
           - 🔎 Commit: ${{ github.event.pull_request.head.sha }}
-          - 🔏 CID `${{ steps.merkelize.outputs.cid }}`
-          - 📦 [Preview](https://w3s.link/ipfs/${{ steps.merkelize.outputs.cid }})
-          - 🔗 [Service Worker Preview](https://inbrowser.link/ipfs/${{ steps.merkelize.outputs.cid }})
+          - 🔏 CID `${{ steps.merkleize.outputs.cid }}`
+          - 📦 [Preview](https://w3s.link/ipfs/${{ steps.merkleize.outputs.cid }})
+          - 🔗 [Service Worker Preview](https://inbrowser.link/ipfs/${{ steps.merkleize.outputs.cid }})
         edit-mode: replace 
