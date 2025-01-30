@@ -44,6 +44,7 @@ jobs:
           path: out
 
       - uses: ./.github/actions/deploy-to-ipfs
+        name: Deploy to IPFS
         id: deploy
         with:
           path-to-deploy: out

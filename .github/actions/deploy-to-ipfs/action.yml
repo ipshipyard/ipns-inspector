@@ -60,9 +60,12 @@ runs:
       id: merkleize
       shell: bash
       run: |
+        echo "ℹ️ Merkleizing ${{ inputs.path-to-deploy }} into CAR file"
         CID=$(npx ipfs-car pack ${{ inputs.path-to-deploy }} --no-wrap --output build.car 2>&1 | tail -n 1)
         echo "cid=$CID" >> "$GITHUB_OUTPUT"
         echo $CID
+        echo "✅ Merkleized ${{ inputs.path-to-deploy }} into CAR file" >> $GITHUB_STEP_SUMMARY
+
 
     - name: Configure and upload CAR to Storacha
       shell: bash
@@ -70,10 +73,13 @@ runs:
         W3_PRINCIPAL: ${{ inputs.storacha-key }}
       run: |
         npm install -g @web3-storage/w3cli
+        echo "ℹ️ Uploading CAR with CID ${{ steps.merkleize.outputs.cid }} to IPFS"
         w3 space add ${{ inputs.storacha-proof }}
         if ! w3 up --car build.car; then
           echo "::error::Failed to upload to IPFS"
           exit 1
+        else
+          echo "✅ Uploaded CAR with CID ${{ steps.merkleize.outputs.cid }} to IPFS" >> $GITHUB_STEP_SUMMARY
         fi
 
     - name: Upload CAR to Filebase
@@ -84,6 +90,7 @@ runs:
         AWS_SECRET_ACCESS_KEY: ${{ inputs.filebase-secret-key }}
         FILEBASE_BUCKET: ${{ inputs.filebase-bucket }}
       run: |
+        echo "ℹ️ Uploading CAR with CID ${{ steps.merkleize.outputs.cid }} to Filebase"
         aws --endpoint https://s3.filebase.com s3 cp build.car s3://${FILEBASE_BUCKET} --metadata 'import=car'
 
     - name: Setup Kubo
@@ -100,6 +107,7 @@ runs:
         ipfs init
         ipfs pin remote service add pinata "${{ inputs.pinata-pinning-url }}" ${{ inputs.pinata-jwt-token }}
         ipfs pin remote add --service=pinata --background --name="build-${{ github.sha }}" ${{ steps.merkleize.outputs.cid }}
+        echo "✅ Pinned CID ${{ steps.merkleize.outputs.cid }} to Pinata" >> $GITHUB_STEP_SUMMARY
 
     - name: Set GitHub commit status
       if: ${{ inputs.set-github-status }}
