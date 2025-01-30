@@ -138,7 +138,7 @@ runs:
           await github.rest.repos.createCommitStatus({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            sha: github.sha,
+            sha: sha,
             state: 'success',
             target_url: `https://w3s.link/ipfs/${cid}`,
             description: `CID: ${cid}`,
