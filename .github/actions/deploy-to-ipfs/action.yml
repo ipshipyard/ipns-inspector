@@ -50,7 +50,7 @@ outputs:
     value: ${{ steps.merkleize.outputs.cid }}
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Install ipfs-car
       shell: bash
@@ -65,6 +65,7 @@ runs:
         echo "cid=$CID" >> "$GITHUB_OUTPUT"
         echo $CID
         echo "✅ Merkleized path: `{{ inputs.path-to-deploy }}` into CAR file with root CID $CID" >> $GITHUB_STEP_SUMMARY
+
 
     - name: Configure and upload CAR to Storacha
       shell: bash
@@ -86,6 +87,7 @@ runs:
           echo "- 📦 [Preview](https://w3s.link/ipfs/${{ steps.merkleize.outputs.cid }})" >> $GITHUB_STEP_SUMMARY
           echo "- 🔗 [Service Worker Preview](https://inbrowser.link/ipfs/${{ steps.merkleize.outputs.cid }})" >> $GITHUB_STEP_SUMMARY
         fi
+
 
     - name: Upload CAR to Filebase
       if: ${{ inputs.filebase-access-key != '' }}
@@ -128,6 +130,10 @@ runs:
         script: |
           const cid = '${{ steps.merkleize.outputs.cid }}';
 
+          // For PR events, we need to use the head SHA
+          const sha = context.eventName === 'pull_request'
+            ? context.payload.pull_request.head.sha
+            : context.sha;
 
           await github.rest.repos.createCommitStatus({
             owner: context.repo.owner,
