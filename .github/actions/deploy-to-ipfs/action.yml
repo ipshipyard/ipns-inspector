@@ -82,7 +82,7 @@ runs:
           echo "✅ Uploaded CAR with CID ${{ steps.merkleize.outputs.cid }} to Storacha" >> $GITHUB_STEP_SUMMARY
 
           echo "### 🚀 Build Preview on IPFS ready" >> $GITHUB_STEP_SUMMARY
-          echo "- 🔎 Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔎 Commit: ${{ github.event.pull_request.head.sha || github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- 🔏 CID: ${{ steps.merkleize.outputs.cid }}" >> $GITHUB_STEP_SUMMARY
           echo "- 📦 [Preview](https://w3s.link/ipfs/${{ steps.merkleize.outputs.cid }})" >> $GITHUB_STEP_SUMMARY
           echo "- 🔗 [Service Worker Preview](https://inbrowser.link/ipfs/${{ steps.merkleize.outputs.cid }})" >> $GITHUB_STEP_SUMMARY
@@ -119,7 +119,7 @@ runs:
       run: |
         ipfs init
         ipfs pin remote service add pinata "${{ inputs.pinata-pinning-url }}" ${{ inputs.pinata-jwt-token }}
-        ipfs pin remote add --service=pinata --background --name="build-${{ github.sha }}" ${{ steps.merkleize.outputs.cid }}
+        ipfs pin remote add --service=pinata --background --name="build-${{ github.event.pull_request.head.sha || github.sha }}" ${{ steps.merkleize.outputs.cid }}
         echo "✅ Pinned CID ${{ steps.merkleize.outputs.cid }} to Pinata" >> $GITHUB_STEP_SUMMARY
 
     - name: Set GitHub commit status
@@ -164,7 +164,7 @@ runs:
         issue-number: ${{ github.event.pull_request.number }}
         body: |
           ### 🚀 Build Preview on IPFS ready
-          - 🔎 Commit: ${{ github.sha }}
+          - 🔎 Commit: ${{ github.event.pull_request.head.sha || github.sha }}
           - 🔏 CID `${{ steps.merkleize.outputs.cid }}`
           - 📦 [Preview](https://w3s.link/ipfs/${{ steps.merkleize.outputs.cid }})
           - 🔗 [Service Worker Preview](https://inbrowser.link/ipfs/${{ steps.merkleize.outputs.cid }})
