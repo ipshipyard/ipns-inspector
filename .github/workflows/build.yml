@@ -20,21 +20,43 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    uses: ./.github/workflows/ipfs-deploy.yml
-    with:
-      node-version: '20'
-      kubo-version: 'v0.33.0-rc3'
-      build-command: 'npm run build'
-      build-output-dir: 'out'
-      pinata: true
-    secrets:
-      STORACHA_KEY: ${{ secrets.STORACHA_KEY }}
-      STORACHA_PROOF: ${{ secrets.STORACHA_PROOF }}
-      PINATA_JWT_TOKEN: ${{ secrets.PINATA_JWT_TOKEN }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: out
+
+      - uses: ipfs/ipfs-deploy-action@v0.1
+        name: Deploy to IPFS
+        id: deploy
+        with:
+          path-to-deploy: out
+          storacha-key: ${{ secrets.STORACHA_KEY }}
+          storacha-proof: ${{ secrets.STORACHA_PROOF }}
+          pinata-jwt-token: ${{ secrets.PINATA_JWT_TOKEN }}
+          github-token: ${{ github.token }}
+
   update-dnslink:
     runs-on: 'ubuntu-latest'
     needs: build-and-deploy
-    if: github.ref == 'refs/heads/main' # only update for main branch
+    if: github.ref == 'refs/heads/main' # only update DNSLink for main branch
     steps:
       - name: Update DNSLink
         run: |
