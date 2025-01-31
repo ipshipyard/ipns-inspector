@@ -43,7 +43,7 @@ jobs:
           name: build-output
           path: out
 
-      - uses: ./.github/actions/deploy-to-ipfs
+      - uses: ipfs/ipfs-deploy-action@v0.1
         name: Deploy to IPFS
         id: deploy
         with:
