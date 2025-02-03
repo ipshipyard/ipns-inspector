@@ -45,13 +45,16 @@ jobs:
           name: build-output
           path: out
 
-      - uses: ipfs/ipfs-deploy-action@v0.1
+      - uses: ipfs/ipfs-deploy-action@13065f9c8b3606115dff9efcc19ae08b58e9ad62
         name: Deploy to IPFS
         id: deploy
         with:
           path-to-deploy: out
           storacha-key: ${{ secrets.STORACHA_KEY }}
           storacha-proof: ${{ secrets.STORACHA_PROOF }}
+          cluster-url: ${{ secrets.CLUSTER_URL }}
+          cluster-user: ${{ secrets.CLUSTER_USER }}
+          cluster-password: ${{ secrets.CLUSTER_PASSWORD }}
           pinata-jwt-token: ${{ secrets.PINATA_JWT_TOKEN }}
           github-token: ${{ github.token }}
 
