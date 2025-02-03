@@ -21,6 +21,8 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    outputs:
+      cid: ${{ steps.deploy.outputs.cid }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -60,6 +62,15 @@ jobs:
     steps:
       - name: Update DNSLink
         run: |
+          if [ -z "${{ env.DNSLINK_NAME }}" ]; then
+            echo "Error: DNSLINK_NAME is empty. Skipping DNSLink update."
+            exit 1
+          fi
+          if [ -z "${{ env.DNSLINK_CID }}" ]; then
+            echo "Error: DNSLINK_CID is empty. Skipping DNSLink update."
+            exit 1
+          fi
+
           echo "Updating DNSLink for: ${{ env.DNSLINK_NAME }}"
           curl --request PUT \
             --header "Authorization: Bearer ${AUTH_TOKEN}" \
@@ -67,8 +78,8 @@ jobs:
             --url "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}" \
             --data "{
               \"type\": \"TXT\",
-              \"name\": \"_dnslink.${DNSLINK_NAME}\",
-              \"content\": \"dnslink=/ipfs/${DNSLINK_CID}\",
+              \"name\": \"_dnslink.${{ env.DNSLINK_NAME }}\",
+              \"content\": \"dnslink=/ipfs/${{ env.DNSLINK_CID }}\",
               \"comment\": \"${{ github.repository }}/${{ github.sha }}\"
             }"
         env:
