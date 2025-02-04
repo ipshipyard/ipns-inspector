@@ -45,7 +45,7 @@ jobs:
           name: build-output
           path: out
 
-      - uses: ipfs/ipfs-deploy-action@v0.1
+      - uses: ipfs/ipfs-deploy-action@v0.2
         name: Deploy to IPFS
         id: deploy
         with:
