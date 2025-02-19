@@ -48,7 +48,7 @@ jobs:
         with:
           path: ${{ env.BUILD_PATH }}
 
-      - uses: ipfs/ipfs-deploy-action@v0.3
+      - uses: ipfs/ipfs-deploy-action@create-deployment
         name: Deploy to IPFS
         id: deploy
         with:
