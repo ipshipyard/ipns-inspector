@@ -62,14 +62,13 @@ jobs:
         if: github.ref == 'refs/heads/main' # only update DNSLink for main branch
         uses: ipfs/dnslink-action@v0.1
         with:
-          cid: ${{ needs.build-and-deploy.outputs.cid }}
+          cid: ${{ steps.deploy.outputs.cid }}
           dnslink_domain: 'ipns.ipfs.network'
           cf_record_id: ${{ secrets.CF_IPNS_NETWORK_RECORD_ID }}
           cf_zone_id: ${{ secrets.CF_IPNS_NETWORK_ZONE_ID }}
           cf_auth_token: ${{ secrets.CF_IPNS_NETWORK_AUTH_TOKEN }}
           github_token: ${{ github.token }}
           set_github_status: true
-
 
 
   gh-pages:
