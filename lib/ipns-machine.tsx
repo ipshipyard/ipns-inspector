@@ -5,7 +5,7 @@ import { CID } from 'multiformats/cid'
 import { type IPNSRecord } from 'ipns'
 import { setup, fromPromise, assign } from 'xstate'
 import { getIPNSNameFromKeypair, getPeerIdFromString } from './peer-id'
-// import { createIPNSRecord } from 'ipns'
+import { unmarshalIPNSRecord } from 'ipns'
 import { generateKeyPair } from '@libp2p/crypto/keys'
 import type { PeerId, Ed25519PrivateKey } from '@libp2p/interface'
 import 'core-js/modules/esnext.uint8-array.to-base64'
@@ -22,6 +22,7 @@ export type Events =
   | { type: 'GENERATE_NEW_KEY' }
   | { type: 'CREATE_RECORD' }
   | { type: 'PUBLISH_RECORD' }
+  | { type: 'IMPORT_RECORD'; file?: File }
 
 export interface Context {
   error: string | Error | null // general error
@@ -83,6 +84,15 @@ export const ipnsMachine = setup({
         ttl: formData.ttlMs,
       })
     }),
+    importRecord: fromPromise<IPNSRecord, { file?: File }>(
+      async ({ input: { file } }) => {
+        if (!file) {
+          throw new Error('No file provided')
+        }
+        const buffer = await file.arrayBuffer()
+        return unmarshalIPNSRecord(new Uint8Array(buffer))
+      }
+    ),
   },
 }).createMachine({
   id: 'ipns-inspector',
@@ -163,6 +173,9 @@ export const ipnsMachine = setup({
             record: undefined,
           }),
           target: 'create',
+        },
+        IMPORT_RECORD: {
+          target: 'importingRecord',
         },
       },
     },
@@ -293,6 +306,28 @@ export const ipnsMachine = setup({
           }),
         },
       },
-    }
+    },
+    importingRecord: {
+      invoke: {
+        src: 'importRecord',
+        input: ({ event }) => ({
+          file: (event as Extract<Events, { type: 'IMPORT_RECORD' }>).file
+        }),
+        onDone: {
+          target: 'inspect',
+          actions: assign({
+            record: ({ event }) => event.output,
+            error: null,
+          }),
+        },
+        onError: {
+          target: 'inspect',
+          actions: assign({
+            error: ({ event }) => event.error as Error,
+            record: undefined,
+          }),
+        },
+      },
+    },
   },
 })
