@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
-import { KeyRound, InfoIcon, CheckCircle2, Download } from 'lucide-react'
+import { KeyRound, InfoIcon, CheckCircle2, Download, Upload } from 'lucide-react'
 import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { Tooltip } from '@radix-ui/react-tooltip'
@@ -42,7 +42,7 @@ const downloadRecord = (name: string, record?: IPNSRecord) => {
   URL.revokeObjectURL(url)
 }
 
-// Simplified component
+
 export default function IPNSInspector() {
   const [state, send] = useMachine(ipnsMachine, {
     inspect: inspector?.inspect,
@@ -80,18 +80,27 @@ export default function IPNSInspector() {
                     onBlur={(e) => send({ type: 'UPDATE_NAME', validate: true, value: e.target.value })}
                     placeholder="k51... or 12D..."
                   />
-                  {
-                    <Button
-                      onClick={() => send({ type: 'INSPECT_NAME' })}
-                      disabled={
-                        isLoading ||
-                        state.context.nameValidationError ||
-                        state.context.nameInput?.length === 0
-                      }
-                    >
-                      Fetch Record {state.context.fetchingRecord ? <Spinner /> : null}
+                  <Button
+                    onClick={() => send({ type: 'INSPECT_NAME' })}
+                    disabled={
+                      isLoading ||
+                      state.context.nameValidationError ||
+                      state.context.nameInput?.length === 0
+                    }
+                  >
+                    Fetch Record {state.context.fetchingRecord ? <Spinner /> : null}
+                  </Button>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".ipns-record"
+                      onChange={(e) => send({ type: 'IMPORT_RECORD', file: e.target.files?.[0] })}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <Button variant="outline" title="Import IPNS Record">
+                      <Upload className="h-4 w-4" />
                     </Button>
-                  }
+                  </div>
                 </div>
                 {state.context.nameValidationError && (
                   <Alert variant="destructive" className="mt-4">
