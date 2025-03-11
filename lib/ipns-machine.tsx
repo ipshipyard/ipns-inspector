@@ -3,13 +3,14 @@ import { ipns as ipnsConstructor } from '@helia/ipns'
 import { type IPNSResolveResult, type IPNS } from '@helia/ipns'
 import { CID } from 'multiformats/cid'
 import { type IPNSRecord } from 'ipns'
-import { setup, fromPromise, assign } from 'xstate'
-import { getIPNSNameFromKeypair, getPeerIdFromString } from './peer-id'
+import { setup, fromPromise, assign, createMachine } from 'xstate'
+import { getIPNSNameFromKeypair, getIPNSNameFromPublicKey, getPeerIdFromString } from './peer-id'
 import { unmarshalIPNSRecord } from 'ipns'
-import { generateKeyPair } from '@libp2p/crypto/keys'
+import { ipnsValidator, validate } from 'ipns/validator'
+import { generateKeyPair, publicKeyFromRaw } from '@libp2p/crypto/keys'
 import type { PeerId, Ed25519PrivateKey } from '@libp2p/interface'
 import 'core-js/modules/esnext.uint8-array.to-base64'
-
+import { base36 } from 'multiformats/bases/base36'
 export const DEFAULT_LIFETIME_MS = 24 * 60 * 60 * 1000 // 24 hours in seconds
 
 export type Mode = 'inspect' | 'create'
@@ -42,7 +43,6 @@ export interface Context {
   heliaInstance?: Helia
   ipns?: IPNS
 }
-
 
 export const ipnsMachine = setup({
   types: {
@@ -84,14 +84,35 @@ export const ipnsMachine = setup({
         ttl: formData.ttlMs,
       })
     }),
-    importRecord: fromPromise<IPNSRecord, { file?: File }>(
+    importRecord: fromPromise<{ record: IPNSRecord; name: string }, { file?: File }>(
       async ({ input: { file } }) => {
         if (!file) {
           throw new Error('No file provided')
         }
+        let ipnsName = file.name.split('.')[0]
         const buffer = await file.arrayBuffer()
-        return unmarshalIPNSRecord(new Uint8Array(buffer))
-      }
+        const record = unmarshalIPNSRecord(new Uint8Array(buffer))
+        if (record.pubKey) {
+          // if the pubkey is embedded, we should infer the IPNS name from the pubkey
+          await ipnsValidator(record.pubKey, record.data)
+          const pubKey = publicKeyFromRaw(record.pubKey)
+          ipnsName = pubKey.toCID().toString(base36)
+        } else {
+          try {
+            const pubKey = getPeerIdFromString(ipnsName).publicKey
+            if (!pubKey) {
+              throw new Error(`Couldn't infer IPNS name from file: ${file.name}`)
+            }
+            await validate(pubKey, new Uint8Array(buffer))
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('Non-base36')) {
+              throw new Error(`Couldn't infer IPNS name from file: ${file.name}`)
+            }
+            throw error
+          }
+        }
+        return { record, name: ipnsName }
+      },
     ),
   },
 }).createMachine({
@@ -311,12 +332,13 @@ export const ipnsMachine = setup({
       invoke: {
         src: 'importRecord',
         input: ({ event }) => ({
-          file: (event as Extract<Events, { type: 'IMPORT_RECORD' }>).file
+          file: (event as Extract<Events, { type: 'IMPORT_RECORD' }>).file,
         }),
         onDone: {
           target: 'inspect',
           actions: assign({
-            record: ({ event }) => event.output,
+            record: ({ event }) => event.output.record,
+            name: ({ event }) => event.output.name,
             error: null,
           }),
         },
