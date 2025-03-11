@@ -13,6 +13,7 @@ import { KeyRound, InfoIcon, CheckCircle2, Download, Upload } from 'lucide-react
 import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { Tooltip } from '@radix-ui/react-tooltip'
+import { privateKeyToProtobuf } from '@libp2p/crypto/keys'
 
 const MAX_VALIDITY = 365 * 24 * 60 * 60 // 1 year in seconds
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -116,7 +117,7 @@ export default function IPNSInspector() {
               <label className="block text-sm font-medium">Private Key (base64)</label>
               <div className="flex gap-2 items-center">
                 <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto flex-1">
-                  <span>{state.context.keypair?.raw.toBase64() ?? 'Generate key first'}</span>
+                  <span>{state.context.keypair ? privateKeyToProtobuf(state.context.keypair).toBase64() : 'Generate key first'}</span>
                 </pre>
                 <Button variant="outline" onClick={() => send({ type: 'GENERATE_NEW_KEY' })}>
                   <KeyRound className="w-4 h-4 mr-2" />
