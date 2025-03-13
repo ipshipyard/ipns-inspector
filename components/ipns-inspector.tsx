@@ -271,14 +271,6 @@ export default function IPNSInspector() {
                 >
                   Create and Inspect Record
                 </Button>
-                <Button
-                  onClick={() => send({ type: 'PUBLISH_RECORD' })}
-                  disabled={state.context.record == null || state.context.publishingRecord}
-                  className="w-full"
-                >
-                  Publish Record
-                  {state.context.publishingRecord ? <Spinner /> : null}
-                </Button>
               </div>
             </div>
           </TabsContent>
@@ -320,15 +312,39 @@ export default function IPNSInspector() {
                     IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}
                   </h3>
                 </div>
-                <Button
-                  onClick={() => downloadRecord(state.context.name, state.context.record)}
-                  variant="outline"
-                  size="sm"
-                  title="Download IPNS Record"
-                >
-                  <Download className="h-4 w-4" />
-                  Download
-                </Button>
+                <div className="flex gap-2">
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => send({ type: 'PUBLISH_RECORD' })}
+                          disabled={state.context.publishingRecord || (mode === 'create' && !state.context.keypair)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          {state.context.publishingRecord ? <Spinner className="mr-1 h-3 w-3" /> : null}
+                          {mode === 'create' ? 'Publish' : 'Republish'}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
+                          {mode === 'create'
+                            ? 'Publish this newly created record to the IPFS DHT'
+                            : 'Republish this existing record to the IPFS DHT'}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Button
+                    onClick={() => downloadRecord(state.context.name, state.context.record)}
+                    variant="outline"
+                    size="sm"
+                    title="Download IPNS Record"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download
+                  </Button>
+                </div>
               </div>
               <div className="grid grid-cols-1 gap-3">
                 <RecordField label="Value" value={state.context.record.value} />

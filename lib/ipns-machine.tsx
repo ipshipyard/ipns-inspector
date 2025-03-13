@@ -115,8 +115,11 @@ export const ipnsMachine = setup({
         return { record, name: ipnsName }
       },
     ),
-    republishRecord: fromPromise<void, { record: IPNSRecord; name: string; ipns: IPNS }>(
+    republishRecord: fromPromise<void, Partial<{ record: IPNSRecord; name: string; ipns: IPNS }>>(
       async ({ input: { record, name, ipns } }) => {
+        if (!record || !name || !ipns) {
+          throw new Error('Missing required parameters')
+        }
         return ipns.republishRecord(name, record)
       },
     ),
@@ -197,12 +200,22 @@ export const ipnsMachine = setup({
           actions: assign({
             nameInput: '',
             nameValidationError: false,
-            record: undefined,
+            // 👇 Only clear the record on transition change if the inspected record was not created by the current keypair
+            record: ({ context }) => context.name === getIPNSNameFromKeypair(context.keypair) ? context.record : undefined,
           }),
           target: 'create',
         },
         IMPORT_RECORD: {
+          actions: assign({
+            nameInput: '',
+            nameValidationError: false,
+            record: undefined,
+          }),
           target: 'importingRecord',
+        },
+        PUBLISH_RECORD: {
+          target: 'republishingRecord',
+          guard: ({ context }: { context: Context }) => !!context.record,
         },
       },
     },
@@ -318,7 +331,7 @@ export const ipnsMachine = setup({
           publish: true,
         }),
         onDone: {
-          target: 'inspect',
+          target: 'create',
           actions: assign({
             record: ({ event }) => event.output,
             publishSuccess: true,
@@ -353,6 +366,36 @@ export const ipnsMachine = setup({
           actions: assign({
             error: ({ event }) => event.error as Error,
             record: undefined,
+          }),
+        },
+      },
+    },
+    republishingRecord: {
+      entry: assign({
+        publishingRecord: true,
+      }),
+      exit: assign({
+        publishingRecord: false,
+      }),
+      invoke: {
+        src: 'republishRecord',
+        input: ({ context }) => ({
+          record: context.record,
+          name: context.name,
+          ipns: context.ipns,
+        }),
+        onDone: {
+          target: 'inspect',
+          actions: assign({
+            publishSuccess: true,
+            error: null,
+          }),
+        },
+        onError: {
+          target: 'inspect',
+          actions: assign({
+            error: ({ event }) => event.error as Error,
+            publishSuccess: false,
           }),
         },
       },
