@@ -142,11 +142,8 @@ export default function IPNSInspector() {
                       <DialogHeader>
                         <DialogTitle className="text-lg font-bold">Import Private Key</DialogTitle>
                         <DialogDescription>
-                          Paste your Ed25519 private key in base64 format.
+                          Paste your libp2p Ed25519 <a href="https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md#keys" target="_blank" className="text-blue-500">private key</a> in base64 encoding.
                         </DialogDescription>
-                        <label className="block text-amber-600 text-xs font-medium mt-2">
-                          Note: This is a simplified implementation. In this demo, a new key will be generated instead of parsing your actual key.
-                        </label>
                       </DialogHeader>
                       <div className="py-4">
                         <div className="space-y-2">
