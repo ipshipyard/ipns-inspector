@@ -4,10 +4,11 @@ import { type IPNSResolveResult, type IPNS } from '@helia/ipns'
 import { CID } from 'multiformats/cid'
 import { type IPNSRecord } from 'ipns'
 import { setup, fromPromise, assign } from 'xstate'
-import { getIPNSNameFromKeypair, getPeerIdFromString } from './peer-id'
+import { getIPNSNameFromKeypair } from './peer-id'
 import { unmarshalIPNSRecord } from 'ipns'
 import { ipnsValidator, validate } from 'ipns/validator'
 import { generateKeyPair, publicKeyFromRaw } from '@libp2p/crypto/keys'
+import { peerIdFromString } from '@libp2p/peer-id'
 import type { PeerId, Ed25519PrivateKey } from '@libp2p/interface'
 import 'core-js/modules/esnext.uint8-array.to-base64'
 import { base36 } from 'multiformats/bases/base36'
@@ -63,7 +64,7 @@ export const ipnsMachine = setup({
       async ({ input: { name, ipns } }) => {
         let peerId: PeerId
         try {
-          peerId = getPeerIdFromString(name)
+          peerId = peerIdFromString(name)
         } catch (error) {
           console.error(error)
           throw new Error('Invalid IPNS name')
@@ -99,7 +100,7 @@ export const ipnsMachine = setup({
           ipnsName = pubKey.toCID().toString(base36)
         } else {
           try {
-            const pubKey = getPeerIdFromString(ipnsName).publicKey
+            const pubKey = peerIdFromString(ipnsName).publicKey
             if (!pubKey) {
               throw new Error(`Couldn't infer IPNS name from file: ${file.name}`)
             }
@@ -112,6 +113,11 @@ export const ipnsMachine = setup({
           }
         }
         return { record, name: ipnsName }
+      },
+    ),
+    republishRecord: fromPromise<void, { record: IPNSRecord; name: string; ipns: IPNS }>(
+      async ({ input: { record, name, ipns } }) => {
+        return ipns.republishRecord(name, record)
       },
     ),
   },
@@ -150,7 +156,7 @@ export const ipnsMachine = setup({
               return false
             }
             try {
-              getPeerIdFromString(event.value)
+              peerIdFromString(event.value)
               return false
             } catch (error) {
               console.error(error)
