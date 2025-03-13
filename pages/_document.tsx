@@ -9,7 +9,6 @@ export default function Document() {
         <meta name="description" content="IPNS Inspector - inspect and create IPNS records from the browser" />
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.json" />
       </Head>
       <body className="antialiased">
         <Main />

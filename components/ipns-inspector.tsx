@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useMachine } from '@xstate/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,10 +9,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
-import { KeyRound, InfoIcon, CheckCircle2, Download } from 'lucide-react'
+import { KeyRound, InfoIcon, CheckCircle2, Download, Upload, Globe, Import, Copy, Check } from 'lucide-react'
+import { privateKeyToProtobuf } from '@libp2p/crypto/keys'
 import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { Tooltip } from '@radix-ui/react-tooltip'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog'
 
 const MAX_VALIDITY = 365 * 24 * 60 * 60 // 1 year in seconds
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -42,7 +51,6 @@ const downloadRecord = (name: string, record?: IPNSRecord) => {
   URL.revokeObjectURL(url)
 }
 
-// Simplified component
 export default function IPNSInspector() {
   const [state, send] = useMachine(ipnsMachine, {
     inspect: inspector?.inspect,
@@ -80,18 +88,25 @@ export default function IPNSInspector() {
                     onBlur={(e) => send({ type: 'UPDATE_NAME', validate: true, value: e.target.value })}
                     placeholder="k51... or 12D..."
                   />
-                  {
-                    <Button
-                      onClick={() => send({ type: 'INSPECT_NAME' })}
-                      disabled={
-                        isLoading ||
-                        state.context.nameValidationError ||
-                        state.context.nameInput?.length === 0
-                      }
-                    >
-                      Fetch Record {state.context.fetchingRecord ? <Spinner /> : null}
+                  <Button
+                    onClick={() => send({ type: 'INSPECT_NAME' })}
+                    disabled={
+                      isLoading || state.context.nameValidationError || state.context.nameInput?.length === 0
+                    }
+                  >
+                    Fetch Record {state.context.fetchingRecord ? <Spinner /> : null}
+                  </Button>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".ipns-record"
+                      onChange={(e) => send({ type: 'IMPORT_RECORD', file: e.target.files?.[0] })}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <Button variant="outline" title="Import IPNS Record">
+                      <Upload className="h-4 w-4" />
                     </Button>
-                  }
+                  </div>
                 </div>
                 {state.context.nameValidationError && (
                   <Alert variant="destructive" className="mt-4">
@@ -103,16 +118,114 @@ export default function IPNSInspector() {
           </TabsContent>
 
           <TabsContent value="create">
-            <div className="space-y-2 mb-4">
-              <label className="block text-sm font-medium">Private Key (base64)</label>
-              <div className="flex gap-2 items-center">
-                <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto flex-1">
-                  <span>{state.context.keypair?.raw.toBase64() ?? 'Generate key first'}</span>
-                </pre>
-                <Button variant="outline" onClick={() => send({ type: 'GENERATE_NEW_KEY' })}>
-                  <KeyRound className="w-4 h-4 mr-2" />
-                  Generate
-                </Button>
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Private Key (base64)</label>
+                <div className="relative">
+                  <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto w-full mb-2 pr-10">
+                    <span className="block truncate">
+                      {state.context.keypair
+                        ? privateKeyToProtobuf(state.context.keypair).toBase64()
+                        : 'Generate key first'}
+                    </span>
+                  </pre>
+                  {state.context.keypair && (
+                    <CopyButton
+                      text={
+                        state.context.keypair ? privateKeyToProtobuf(state.context.keypair).toBase64() : ''
+                      }
+                    />
+                  )}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => send({ type: 'GENERATE_NEW_KEY' })}
+                    className="flex-1"
+                  >
+                    <KeyRound className="w-4 h-4 mr-2" />
+                    Generate New Key
+                  </Button>
+                  <Dialog
+                    open={state.context.importDialogOpen}
+                    onOpenChange={(open) =>
+                      open ? send({ type: 'OPEN_IMPORT_DIALOG' }) : send({ type: 'CLOSE_IMPORT_DIALOG' })
+                    }
+                  >
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="bg-amber-50 hover:bg-amber-100 border-amber-200 flex-1"
+                      >
+                        <Import className="w-4 h-4 mr-2 text-amber-700" />
+                        Import Key
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent
+                      className="sm:max-w-[425px] bg-white border-2 shadow-xl"
+                      aria-describedby="dialog-description"
+                    >
+                      <DialogHeader>
+                        <DialogTitle className="text-lg font-bold">Import Private Key</DialogTitle>
+                      </DialogHeader>
+
+                      <div id="dialog-description" className="text-sm text-muted-foreground space-y-4 py-2">
+                        <p>
+                          Paste your libp2p Ed25519{' '}
+                          <a
+                            href="https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md#keys"
+                            target="_blank"
+                            className="text-blue-500"
+                          >
+                            private key
+                          </a>{' '}
+                          in base64 encoding.
+                        </p>
+
+                        <p>To use your Kubo private key:</p>
+                        <div className="relative inline-block w-full max-w-md">
+                          <code className="bg-black text-white rounded-md py-2 px-3 pr-12 text-xs inline-block w-full">
+                            $ cat ~/.ipfs/config | jq .Identity.PrivKey
+                          </code>
+                          <CopyButton text="cat ~/.ipfs/config | jq '.Identity.PrivKey'" />
+                        </div>
+                      </div>
+
+                      <div className="py-4">
+                        <div className="space-y-2">
+                          <label htmlFor="privateKey" className="font-medium">
+                            Private Key
+                          </label>
+                          <Input
+                            id="privateKey"
+                            value={state.context.privateKeyInput}
+                            onChange={(e) =>
+                              send({ type: 'UPDATE_PRIVATE_KEY_INPUT', value: e.target.value })
+                            }
+                            placeholder="Base64 encoded private key"
+                            className="w-full border-2 focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        {state.context.privateKeyError && (
+                          <div className="text-red-500 text-sm mt-2 font-medium">
+                            {state.context.privateKeyError}
+                          </div>
+                        )}
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          type="submit"
+                          onClick={() =>
+                            send({ type: 'IMPORT_PRIVATE_KEY', value: state.context.privateKeyInput })
+                          }
+                          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Import
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
               {state.context?.keypair && (
                 <div className="space-y-2">
@@ -230,15 +343,19 @@ export default function IPNSInspector() {
                   />
                   <Button
                     variant="outline"
-                    onClick={() => send({ type: 'UPDATE_FORM', field: 'ttlMs', value: (60 * 1000).toString() })}
+                    onClick={() =>
+                      send({ type: 'UPDATE_FORM', field: 'ttlMs', value: (60 * 1000).toString() })
+                    }
                   >
                     1 min
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => send({ type: 'UPDATE_FORM', field: 'ttlMs', value: (60 * 60 * 1000).toString() })}
+                    onClick={() =>
+                      send({ type: 'UPDATE_FORM', field: 'ttlMs', value: (5 * 60 * 1000).toString() })
+                    }
                   >
-                    1 hour
+                    5 minutes
                   </Button>
                 </div>
               </div>
@@ -259,15 +376,7 @@ export default function IPNSInspector() {
                   disabled={isLoading || state.context.keypair == null}
                   className="w-full"
                 >
-                  Create and Inspect Record
-                </Button>
-                <Button
-                  onClick={() => send({ type: 'PUBLISH_RECORD' })}
-                  disabled={state.context.record == null || state.context.publishingRecord}
-                  className="w-full"
-                >
-                  Publish Record
-                  {state.context.publishingRecord ? <Spinner /> : null}
+                  Create Record
                 </Button>
               </div>
             </div>
@@ -276,26 +385,6 @@ export default function IPNSInspector() {
           {error && (
             <Alert variant="destructive" className="mt-4">
               <AlertDescription>{error.toString()}</AlertDescription>
-            </Alert>
-          )}
-          {state.context.publishSuccess && (
-            <Alert className="mt-4 bg-green-50 border-green-200">
-              <div className="flex gap-2 items-center">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span className="text-green-800">IPNS record published to the DHT successfully!</span>
-                <TooltipProvider delayDuration={100}>
-                      <Tooltip>
-                        <TooltipTrigger asChild={false}>
-                          <InfoIcon className="w-4 h-4 text-blue-700" />
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
-                            The IPNS name should be resolvable for the next 48 hours(the DHT expiration interval)
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-              </div>
             </Alert>
           )}
 
@@ -310,15 +399,6 @@ export default function IPNSInspector() {
                     IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}
                   </h3>
                 </div>
-                <Button
-                  onClick={() => downloadRecord(state.context.name, state.context.record)}
-                  variant="outline"
-                  size="sm"
-                  title="Download IPNS Record"
-                >
-                  <Download className="h-4 w-4" />
-                  Download
-                </Button>
               </div>
               <div className="grid grid-cols-1 gap-3">
                 <RecordField label="Value" value={state.context.record.value} />
@@ -340,7 +420,65 @@ export default function IPNSInspector() {
                 />
                 <RecordField label="Data" value={state.context.record.data.toBase64()} monospace />
               </div>
+              <div className="flex items-center gap-2 mt-4">
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => send({ type: 'PUBLISH_RECORD' })}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        disabled={
+                          state.context.publishingRecord || (mode === 'create' && !state.context.keypair)
+                        }
+                        variant="default"
+                        size="sm"
+                      >
+                        {state.context.publishingRecord ? <Spinner className="mr-1 h-3 w-3" /> : null}
+                        <Globe className="h-4 w-4 mr-1" />
+                        {mode === 'create' ? 'Publish' : 'Republish'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
+                        {mode === 'create'
+                          ? 'Publish this newly created record to the IPFS DHT'
+                          : 'Republish this existing record to the IPFS DHT'}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <Button
+                  onClick={() => downloadRecord(state.context.name, state.context.record)}
+                  variant="secondary"
+                  size="sm"
+                  className="w-full bg-amber-100 hover:bg-amber-200 border-amber-300"
+                  title="Download IPNS Record"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Download IPNS Record
+                </Button>
+              </div>
             </div>
+          )}
+          {state.context.publishSuccess && (
+            <Alert className="mt-4 bg-green-50 border-green-200">
+              <div className="flex gap-2 items-center">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span className="text-green-800">IPNS record published to the DHT successfully!</span>
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild={false}>
+                      <InfoIcon className="w-4 h-4 text-blue-700" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
+                        The IPNS name should be resolvable for the next 48 hours(the DHT expiration interval)
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </Alert>
           )}
         </Tabs>
       </CardContent>
@@ -354,3 +492,28 @@ const RecordField: React.FC<RecordFieldProps> = ({ label, value, monospace }) =>
     <div className={`break-all ${monospace ? 'font-mono text-sm' : ''}`}>{value}</div>
   </div>
 )
+
+const CopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="absolute top-1/2 right-1 -translate-y-1/2 bg-white/90 hover:bg-white shadow-sm
+        transition-all duration-200 ease-in-out
+        hover:scale-110 hover:shadow-md hover:ring-2 hover:ring-blue-200
+        active:scale-90 active:shadow-inner active:bg-blue-50"
+      onClick={handleCopy}
+      title="Copy to clipboard"
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+    </Button>
+  )
+}
