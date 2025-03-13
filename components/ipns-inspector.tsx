@@ -138,13 +138,25 @@ export default function IPNSInspector() {
                         Import Key
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px] bg-white border-2 shadow-xl">
+                    <DialogContent className="sm:max-w-[425px] bg-white border-2 shadow-xl" aria-describedby="dialog-description">
                       <DialogHeader>
                         <DialogTitle className="text-lg font-bold">Import Private Key</DialogTitle>
-                        <DialogDescription>
-                          Paste your libp2p Ed25519 <a href="https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md#keys" target="_blank" className="text-blue-500">private key</a> in base64 encoding.
-                        </DialogDescription>
                       </DialogHeader>
+
+                      <div id="dialog-description" className="text-sm text-muted-foreground space-y-4 py-2">
+                        <p>
+                          Paste your libp2p Ed25519 <a href="https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md#keys" target="_blank" className="text-blue-500">private key</a> in base64 encoding.
+                        </p>
+
+                        <p>
+                          To use your Kubo private key:
+                        </p>
+                        <div className="relative inline-block w-full max-w-md">
+                          <code className="bg-black text-white rounded-md py-2 px-3 pr-12 text-xs inline-block w-full">$ cat ~/.ipfs/config | jq '.Identity.PrivKey'</code>
+                          <CopyButton text="cat ~/.ipfs/config | jq '.Identity.PrivKey'" />
+                        </div>
+                      </div>
+
                       <div className="py-4">
                         <div className="space-y-2">
                           <label htmlFor="privateKey" className="font-medium">
