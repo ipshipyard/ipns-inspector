@@ -140,8 +140,7 @@ export const ipnsMachine = setup({
           }
           return { keypair };
         } catch (error) {
-          console.error('Error importing private key:', error);
-          throw new Error('Invalid private key format');
+          throw new Error('Invalid private key');
         }
       },
     ),
@@ -438,7 +437,7 @@ export const ipnsMachine = setup({
         onDone: {
           target: 'create',
           actions: assign({
-            keypair: ({ event }) => event.output.keypair,
+            keypair: ({ event }) => event?.output?.keypair,
             error: null,
             privateKeyInput: '',
             privateKeyError: null,
@@ -448,7 +447,6 @@ export const ipnsMachine = setup({
         onError: {
           target: 'create',
           actions: assign({
-            error: ({ event }) => event.error as string,
             privateKeyError: 'Invalid private key format',
           }),
         },
