@@ -10,10 +10,10 @@ import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
 import { KeyRound, InfoIcon, CheckCircle2, Download, Upload, Globe, Import } from 'lucide-react'
+import { privateKeyToProtobuf } from '@libp2p/crypto/keys'
 import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { Tooltip } from '@radix-ui/react-tooltip'
-import { privateKeyToProtobuf } from '@libp2p/crypto/keys'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 
 const MAX_VALIDITY = 365 * 24 * 60 * 60 // 1 year in seconds
