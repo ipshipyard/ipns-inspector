@@ -210,6 +210,7 @@ export const ipnsMachine = setup({
             nameInput: '',
             nameValidationError: false,
             record: undefined,
+            publishSuccess: false
           }),
           target: 'importingRecord',
         },
@@ -249,7 +250,6 @@ export const ipnsMachine = setup({
     create: {
       entry: assign({
         nameValidationError: false,
-        publishSuccess: false,
       }),
       on: {
         CREATE_RECORD: {
@@ -304,6 +304,7 @@ export const ipnsMachine = setup({
             // update the name from the keypair since it's not contained in the record
             name: ({ context }) => getIPNSNameFromKeypair(context.keypair),
             error: null,
+            publishSuccess: false,
           }),
         },
         onError: {

@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
-import { KeyRound, InfoIcon, CheckCircle2, Download, Upload } from 'lucide-react'
+import { KeyRound, InfoIcon, CheckCircle2, Download, Upload, Globe } from 'lucide-react'
 import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { Tooltip } from '@radix-ui/react-tooltip'
@@ -269,7 +269,7 @@ export default function IPNSInspector() {
                   disabled={isLoading || state.context.keypair == null}
                   className="w-full"
                 >
-                  Create and Inspect Record
+                  Create Record
                 </Button>
               </div>
             </div>
@@ -278,26 +278,6 @@ export default function IPNSInspector() {
           {error && (
             <Alert variant="destructive" className="mt-4">
               <AlertDescription>{error.toString()}</AlertDescription>
-            </Alert>
-          )}
-          {state.context.publishSuccess && (
-            <Alert className="mt-4 bg-green-50 border-green-200">
-              <div className="flex gap-2 items-center">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span className="text-green-800">IPNS record published to the DHT successfully!</span>
-                <TooltipProvider delayDuration={100}>
-                      <Tooltip>
-                        <TooltipTrigger asChild={false}>
-                          <InfoIcon className="w-4 h-4 text-blue-700" />
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
-                            The IPNS name should be resolvable for the next 48 hours(the DHT expiration interval)
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-              </div>
             </Alert>
           )}
 
@@ -311,39 +291,6 @@ export default function IPNSInspector() {
                   <h3 className="font-medium">
                     IPNS Record Version: {state.context.record.hasOwnProperty('signatureV1') ? 'V1+V2' : 'V2'}
                   </h3>
-                </div>
-                <div className="flex gap-2">
-                  <TooltipProvider delayDuration={100}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          onClick={() => send({ type: 'PUBLISH_RECORD' })}
-                          disabled={state.context.publishingRecord || (mode === 'create' && !state.context.keypair)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          {state.context.publishingRecord ? <Spinner className="mr-1 h-3 w-3" /> : null}
-                          {mode === 'create' ? 'Publish' : 'Republish'}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
-                          {mode === 'create'
-                            ? 'Publish this newly created record to the IPFS DHT'
-                            : 'Republish this existing record to the IPFS DHT'}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <Button
-                    onClick={() => downloadRecord(state.context.name, state.context.record)}
-                    variant="outline"
-                    size="sm"
-                    title="Download IPNS Record"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </Button>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3">
@@ -366,7 +313,63 @@ export default function IPNSInspector() {
                 />
                 <RecordField label="Data" value={state.context.record.data.toBase64()} monospace />
               </div>
+              <div className="flex items-center gap-2 mt-4">
+                <TooltipProvider delayDuration={100}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => send({ type: 'PUBLISH_RECORD' })}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        disabled={state.context.publishingRecord || (mode === 'create' && !state.context.keypair)}
+                        variant="default"
+                        size="sm"
+                      >
+                        {state.context.publishingRecord ? <Spinner className="mr-1 h-3 w-3" /> : null}
+                        <Globe className="h-4 w-4 mr-1" />
+                        {mode === 'create' ? 'Publish' : 'Republish'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
+                        {mode === 'create'
+                          ? 'Publish this newly created record to the IPFS DHT'
+                          : 'Republish this existing record to the IPFS DHT'}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <Button
+                  onClick={() => downloadRecord(state.context.name, state.context.record)}
+                  variant="secondary"
+                  size="sm"
+                  className="w-full bg-amber-100 hover:bg-amber-200 border-amber-300"
+                  title="Download IPNS Record"
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Download IPNS Record
+                </Button>
+              </div>
             </div>
+          )}
+          {state.context.publishSuccess && (
+            <Alert className="mt-4 bg-green-50 border-green-200">
+              <div className="flex gap-2 items-center">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span className="text-green-800">IPNS record published to the DHT successfully!</span>
+                <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild={false}>
+                          <InfoIcon className="w-4 h-4 text-blue-700" />
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p className="text-sm m-2 p-2 bg-black text-white rounded-md">
+                            The IPNS name should be resolvable for the next 48 hours(the DHT expiration interval)
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+              </div>
+            </Alert>
           )}
         </Tabs>
       </CardContent>
