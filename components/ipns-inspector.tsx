@@ -298,9 +298,9 @@ export default function IPNSInspector() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => send({ type: 'UPDATE_FORM', field: 'ttlMs', value: (60 * 60 * 1000).toString() })}
+                    onClick={() => send({ type: 'UPDATE_FORM', field: 'ttlMs', value: (5 * 60 * 1000).toString() })}
                   >
-                    1 hour
+                    5 minutes
                   </Button>
                 </div>
               </div>
