@@ -1,4 +1,5 @@
 import { createHeliaHTTP, Helia } from '@helia/http'
+import { fromString as uint8ArrayFromString } from 'uint8arrays/from-string'
 import { ipns as ipnsConstructor } from '@helia/ipns'
 import { type IPNSResolveResult, type IPNS } from '@helia/ipns'
 import { CID } from 'multiformats/cid'
@@ -25,6 +26,8 @@ export type Events =
   | { type: 'CREATE_RECORD' }
   | { type: 'PUBLISH_RECORD' }
   | { type: 'IMPORT_RECORD'; file?: File }
+  | { type: 'IMPORT_PRIVATE_KEY'; value: string }
+  | { type: 'UPDATE_PRIVATE_KEY_INPUT'; value: string }
 
 export interface Context {
   error: string | Error | null // general error
@@ -33,6 +36,8 @@ export interface Context {
   name: string // The IPNS name either inspecting (either fetched or created)
   record?: IPNSRecord // the record fetched or created
   keypair?: Ed25519PrivateKey // the keypair used to create the record
+  privateKeyInput: string // private key input field
+  privateKeyError: string | null // private key input error
   formData: {
     value: string // the value field for the IPNS record to publish
     lifetime: number // the lifetime field for the IPNS record to publish
@@ -123,6 +128,20 @@ export const ipnsMachine = setup({
         return ipns.republishRecord(name, record)
       },
     ),
+    importPrivateKey: fromPromise<{ keypair: Ed25519PrivateKey }, { value: string }>(
+      async ({ input: { value } }) => {
+        try {
+          const keypair = privateKeyFromProtobuf(uint8ArrayFromString(value, 'base64'))
+          if (keypair.type !== 'Ed25519') {
+            throw new Error('Only libp2p Ed25519 keys are supported')
+          }
+          return { keypair };
+        } catch (error) {
+          console.error('Error importing private key:', error);
+          throw new Error('Invalid private key format');
+        }
+      },
+    ),
   },
 }).createMachine({
   id: 'ipns-inspector',
@@ -135,6 +154,8 @@ export const ipnsMachine = setup({
     fetchingRecord: false,
     publishingRecord: false,
     publishSuccess: false,
+    privateKeyInput: '',
+    privateKeyError: null,
     formData: {
       value: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
       lifetime: DEFAULT_LIFETIME_MS,
@@ -168,6 +189,12 @@ export const ipnsMachine = setup({
           },
         }),
       ],
+    },
+    UPDATE_PRIVATE_KEY_INPUT: {
+      actions: assign({
+        privateKeyInput: ({ event }) => event.value,
+        privateKeyError: null,
+      }),
     },
   },
   states: {
@@ -269,6 +296,21 @@ export const ipnsMachine = setup({
           }),
           target: 'generatingKey',
         },
+        IMPORT_PRIVATE_KEY: [
+          {
+            target: 'create',
+            guard: ({ context }: { context: Context }) => !context.privateKeyInput.trim(),
+            actions: assign({
+              privateKeyError: 'Private key cannot be empty',
+            }),
+          },
+          {
+            target: 'importingPrivateKey',
+            actions: assign({
+              privateKeyError: null,
+            }),
+          },
+        ],
       },
     },
     generatingKey: {
@@ -367,6 +409,29 @@ export const ipnsMachine = setup({
           actions: assign({
             error: ({ event }) => event.error as Error,
             record: undefined,
+          }),
+        },
+      },
+    },
+    importingPrivateKey: {
+      invoke: {
+        src: 'importPrivateKey',
+        input: ({ context }: { context: Context }) => ({
+          value: context.privateKeyInput.trim()
+        }),
+        onDone: {
+          target: 'create',
+          actions: assign({
+            keypair: ({ event }) => event.output.keypair,
+            error: null,
+            privateKeyInput: '',
+            privateKeyError: null,
+          }),
+        },
+        onError: {
+          target: 'create',
+          actions: assign({
+            error: ({ event }) => event.error as string,
           }),
         },
       },

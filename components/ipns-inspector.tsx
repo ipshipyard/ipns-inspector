@@ -9,11 +9,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
-import { KeyRound, InfoIcon, CheckCircle2, Download, Upload, Globe } from 'lucide-react'
+import { KeyRound, InfoIcon, CheckCircle2, Download, Upload, Globe, Import } from 'lucide-react'
 import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { Tooltip } from '@radix-ui/react-tooltip'
 import { privateKeyToProtobuf } from '@libp2p/crypto/keys'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
 
 const MAX_VALIDITY = 365 * 24 * 60 * 60 // 1 year in seconds
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -42,7 +43,6 @@ const downloadRecord = (name: string, record?: IPNSRecord) => {
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
-
 
 export default function IPNSInspector() {
   const [state, send] = useMachine(ipnsMachine, {
@@ -123,6 +123,51 @@ export default function IPNSInspector() {
                   <KeyRound className="w-4 h-4 mr-2" />
                   Generate
                 </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="bg-amber-50 hover:bg-amber-100 border-amber-200">
+                      <Import className="w-4 h-4 mr-2 text-amber-700" />
+                      Import Key
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px] bg-white border-2 shadow-xl">
+                    <DialogHeader>
+                      <DialogTitle className="text-lg font-bold">Import Private Key</DialogTitle>
+                      <DialogDescription>
+                        Paste your Ed25519 private key in base64 format.
+                      </DialogDescription>
+                      <label className="block text-amber-600 text-xs font-medium mt-2">
+                        Note: This is a simplified implementation. In this demo, a new key will be generated instead of parsing your actual key.
+                      </label>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <div className="space-y-2">
+                        <label htmlFor="privateKey" className="font-medium">
+                          Private Key
+                        </label>
+                        <Input
+                          id="privateKey"
+                          value={state.context.privateKeyInput}
+                          onChange={(e) => send({ type: 'UPDATE_PRIVATE_KEY_INPUT', value: e.target.value })}
+                          placeholder="Base64 encoded private key"
+                          className="w-full border-2 focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      {state.context.privateKeyError && (
+                        <div className="text-red-500 text-sm mt-2 font-medium">{state.context.privateKeyError}</div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        type="submit"
+                        onClick={() => send({ type: 'IMPORT_PRIVATE_KEY', value: state.context.privateKeyInput })}
+                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        Import
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               {state.context?.keypair && (
                 <div className="space-y-2">
