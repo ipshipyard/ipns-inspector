@@ -28,6 +28,8 @@ export type Events =
   | { type: 'IMPORT_RECORD'; file?: File }
   | { type: 'IMPORT_PRIVATE_KEY'; value: string }
   | { type: 'UPDATE_PRIVATE_KEY_INPUT'; value: string }
+  | { type: 'OPEN_IMPORT_DIALOG' }
+  | { type: 'CLOSE_IMPORT_DIALOG' }
 
 export interface Context {
   error: string | Error | null // general error
@@ -38,6 +40,7 @@ export interface Context {
   keypair?: Ed25519PrivateKey // the keypair used to create the record
   privateKeyInput: string // private key input field
   privateKeyError: string | null // private key input error
+  importDialogOpen: boolean // whether the import dialog is open
   formData: {
     value: string // the value field for the IPNS record to publish
     lifetime: number // the lifetime field for the IPNS record to publish
@@ -156,6 +159,7 @@ export const ipnsMachine = setup({
     publishSuccess: false,
     privateKeyInput: '',
     privateKeyError: null,
+    importDialogOpen: false,
     formData: {
       value: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
       lifetime: DEFAULT_LIFETIME_MS,
@@ -194,6 +198,17 @@ export const ipnsMachine = setup({
       actions: assign({
         privateKeyInput: ({ event }) => event.value,
         privateKeyError: null,
+      }),
+    },
+    OPEN_IMPORT_DIALOG: {
+      actions: assign({
+        importDialogOpen: true,
+        privateKeyError: null,
+      }),
+    },
+    CLOSE_IMPORT_DIALOG: {
+      actions: assign({
+        importDialogOpen: false,
       }),
     },
   },
@@ -277,6 +292,7 @@ export const ipnsMachine = setup({
     create: {
       entry: assign({
         nameValidationError: false,
+        publishSuccess: false,
       }),
       on: {
         CREATE_RECORD: {
@@ -426,12 +442,14 @@ export const ipnsMachine = setup({
             error: null,
             privateKeyInput: '',
             privateKeyError: null,
+            importDialogOpen: false,
           }),
         },
         onError: {
           target: 'create',
           actions: assign({
             error: ({ event }) => event.error as string,
+            privateKeyError: 'Invalid private key format',
           }),
         },
       },

@@ -130,7 +130,7 @@ export default function IPNSInspector() {
                   <KeyRound className="w-4 h-4 mr-2" />
                   Generate
                 </Button>
-                <Dialog>
+                <Dialog open={state.context.importDialogOpen} onOpenChange={(open) => open ? send({ type: 'OPEN_IMPORT_DIALOG' }) : send({ type: 'CLOSE_IMPORT_DIALOG' })}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="bg-amber-50 hover:bg-amber-100 border-amber-200">
                       <Import className="w-4 h-4 mr-2 text-amber-700" />
