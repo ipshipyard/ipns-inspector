@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
-import { KeyRound, InfoIcon, CheckCircle2, Download, Upload, Globe, Import } from 'lucide-react'
+import { KeyRound, InfoIcon, CheckCircle2, Download, Upload, Globe, Import, Copy } from 'lucide-react'
 import { privateKeyToProtobuf } from '@libp2p/crypto/keys'
 import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
@@ -119,6 +119,13 @@ export default function IPNSInspector() {
                 <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto flex-1">
                   <span>{state.context.keypair ? privateKeyToProtobuf(state.context.keypair).toBase64() : 'Generate key first'}</span>
                 </pre>
+                {
+                  state.context.keypair ?
+                <Button variant="outline" onClick={() => navigator.clipboard.writeText(state.context.keypair ? privateKeyToProtobuf(state.context.keypair).toBase64() : '')}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+                : null
+                }
                 <Button variant="outline" onClick={() => send({ type: 'GENERATE_NEW_KEY' })}>
                   <KeyRound className="w-4 h-4 mr-2" />
                   Generate
