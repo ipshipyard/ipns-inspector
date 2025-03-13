@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useMachine } from '@xstate/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createBrowserInspector } from '@statelyai/inspect'
 import { ipnsMachine, Mode } from '../lib/ipns-machine'
 import { Spinner } from './ui/spinner'
-import { KeyRound, InfoIcon, CheckCircle2, Download, Upload, Globe, Import, Copy } from 'lucide-react'
+import { KeyRound, InfoIcon, CheckCircle2, Download, Upload, Globe, Import, Copy, Check } from 'lucide-react'
 import { privateKeyToProtobuf } from '@libp2p/crypto/keys'
 import { getIPNSNameFromKeypair } from '@/lib/peer-id'
 import { TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
@@ -113,68 +113,70 @@ export default function IPNSInspector() {
           </TabsContent>
 
           <TabsContent value="create">
-            <div className="space-y-2 mb-4">
-              <label className="block text-sm font-medium">Private Key (base64)</label>
-              <div className="flex gap-2 items-center">
-                <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto flex-1">
-                  <span>{state.context.keypair ? privateKeyToProtobuf(state.context.keypair).toBase64() : 'Generate key first'}</span>
-                </pre>
-                {
-                  state.context.keypair ?
-                <Button variant="outline" onClick={() => navigator.clipboard.writeText(state.context.keypair ? privateKeyToProtobuf(state.context.keypair).toBase64() : '')}>
-                  <Copy className="w-4 h-4" />
-                </Button>
-                : null
-                }
-                <Button variant="outline" onClick={() => send({ type: 'GENERATE_NEW_KEY' })}>
-                  <KeyRound className="w-4 h-4 mr-2" />
-                  Generate
-                </Button>
-                <Dialog open={state.context.importDialogOpen} onOpenChange={(open) => open ? send({ type: 'OPEN_IMPORT_DIALOG' }) : send({ type: 'CLOSE_IMPORT_DIALOG' })}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="bg-amber-50 hover:bg-amber-100 border-amber-200">
-                      <Import className="w-4 h-4 mr-2 text-amber-700" />
-                      Import Key
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] bg-white border-2 shadow-xl">
-                    <DialogHeader>
-                      <DialogTitle className="text-lg font-bold">Import Private Key</DialogTitle>
-                      <DialogDescription>
-                        Paste your Ed25519 private key in base64 format.
-                      </DialogDescription>
-                      <label className="block text-amber-600 text-xs font-medium mt-2">
-                        Note: This is a simplified implementation. In this demo, a new key will be generated instead of parsing your actual key.
-                      </label>
-                    </DialogHeader>
-                    <div className="py-4">
-                      <div className="space-y-2">
-                        <label htmlFor="privateKey" className="font-medium">
-                          Private Key
-                        </label>
-                        <Input
-                          id="privateKey"
-                          value={state.context.privateKeyInput}
-                          onChange={(e) => send({ type: 'UPDATE_PRIVATE_KEY_INPUT', value: e.target.value })}
-                          placeholder="Base64 encoded private key"
-                          className="w-full border-2 focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      {state.context.privateKeyError && (
-                        <div className="text-red-500 text-sm mt-2 font-medium">{state.context.privateKeyError}</div>
-                      )}
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        type="submit"
-                        onClick={() => send({ type: 'IMPORT_PRIVATE_KEY', value: state.context.privateKeyInput })}
-                        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        Import
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Private Key (base64)</label>
+                <div className="relative">
+                  <pre className="p-3 bg-muted rounded-md text-sm overflow-x-auto w-full mb-2 pr-10">
+                    <span className="block truncate">{state.context.keypair ? privateKeyToProtobuf(state.context.keypair).toBase64() : 'Generate key first'}</span>
+                  </pre>
+                  {state.context.keypair && (
+                    <CopyButton
+                      text={state.context.keypair ? privateKeyToProtobuf(state.context.keypair).toBase64() : ''}
+                    />
+                  )}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button variant="outline" onClick={() => send({ type: 'GENERATE_NEW_KEY' })} className="flex-1">
+                    <KeyRound className="w-4 h-4 mr-2" />
+                    Generate New Key
+                  </Button>
+                  <Dialog open={state.context.importDialogOpen} onOpenChange={(open) => open ? send({ type: 'OPEN_IMPORT_DIALOG' }) : send({ type: 'CLOSE_IMPORT_DIALOG' })}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="bg-amber-50 hover:bg-amber-100 border-amber-200 flex-1">
+                        <Import className="w-4 h-4 mr-2 text-amber-700" />
+                        Import Key
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px] bg-white border-2 shadow-xl">
+                      <DialogHeader>
+                        <DialogTitle className="text-lg font-bold">Import Private Key</DialogTitle>
+                        <DialogDescription>
+                          Paste your Ed25519 private key in base64 format.
+                        </DialogDescription>
+                        <label className="block text-amber-600 text-xs font-medium mt-2">
+                          Note: This is a simplified implementation. In this demo, a new key will be generated instead of parsing your actual key.
+                        </label>
+                      </DialogHeader>
+                      <div className="py-4">
+                        <div className="space-y-2">
+                          <label htmlFor="privateKey" className="font-medium">
+                            Private Key
+                          </label>
+                          <Input
+                            id="privateKey"
+                            value={state.context.privateKeyInput}
+                            onChange={(e) => send({ type: 'UPDATE_PRIVATE_KEY_INPUT', value: e.target.value })}
+                            placeholder="Base64 encoded private key"
+                            className="w-full border-2 focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        {state.context.privateKeyError && (
+                          <div className="text-red-500 text-sm mt-2 font-medium">{state.context.privateKeyError}</div>
+                        )}
+                      </div>
+                      <DialogFooter>
+                        <Button
+                          type="submit"
+                          onClick={() => send({ type: 'IMPORT_PRIVATE_KEY', value: state.context.privateKeyInput })}
+                          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Import
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
               {state.context?.keypair && (
                 <div className="space-y-2">
@@ -435,3 +437,31 @@ const RecordField: React.FC<RecordFieldProps> = ({ label, value, monospace }) =>
     <div className={`break-all ${monospace ? 'font-mono text-sm' : ''}`}>{value}</div>
   </div>
 )
+
+const CopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="absolute top-1/2 right-2 -translate-y-1/2 bg-white/90 hover:bg-white shadow-sm
+        transition-all duration-200 ease-in-out
+        hover:scale-110 hover:shadow-md hover:ring-2 hover:ring-blue-200
+        active:scale-90 active:shadow-inner active:bg-blue-50"
+      onClick={handleCopy}
+      title="Copy to clipboard"
+    >
+      {copied ?
+        <Check className="w-3.5 h-3.5 text-green-500" /> :
+        <Copy className="w-3.5 h-3.5" />
+      }
+    </Button>
+  );
+};
