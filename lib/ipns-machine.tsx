@@ -140,7 +140,7 @@ export const ipnsMachine = setup({
           }
           return { keypair };
         } catch (error) {
-          throw new Error('Invalid private key');
+          throw new Error(`Invalid private key: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       },
     ),
