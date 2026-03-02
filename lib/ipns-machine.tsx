@@ -13,7 +13,7 @@ import { peerIdFromString } from '@libp2p/peer-id'
 import type { PeerId, Ed25519PrivateKey } from '@libp2p/interface'
 import 'core-js/modules/esnext.uint8-array.to-base64'
 import { base36 } from 'multiformats/bases/base36'
-export const DEFAULT_LIFETIME_MS = 24 * 60 * 60 * 1000 // 24 hours in seconds
+export const DEFAULT_LIFETIME_MS = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
 
 export type Mode = 'inspect' | 'create'
 

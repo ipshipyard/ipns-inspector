@@ -23,7 +23,6 @@ import {
   DialogTrigger,
 } from './ui/dialog'
 
-const MAX_VALIDITY = 365 * 24 * 60 * 60 // 1 year in seconds
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export const NAME_VALIDATION_ERROR = 'IPNS names must be base36 encoded CIDs or base58 encoded libp2p PeerIDs'
@@ -289,7 +288,6 @@ export default function IPNSInspector() {
                     value={state.context.formData.lifetime}
                     onChange={(e) => send({ type: 'UPDATE_FORM', field: 'lifetime', value: e.target.value })}
                     min="1"
-                    max={MAX_VALIDITY}
                   />
 
                   <Button

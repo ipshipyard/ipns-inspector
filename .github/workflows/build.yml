@@ -53,8 +53,11 @@ jobs:
         id: deploy
         with:
           path-to-deploy: ${{ env.BUILD_PATH }}
-          storacha-key: ${{ secrets.STORACHA_KEY }}
-          storacha-proof: ${{ secrets.STORACHA_PROOF }}
+          cluster-url: ${{ secrets.CLUSTER_URL }}
+          cluster-user: ${{ secrets.CLUSTER_USER }}
+          cluster-password: ${{ secrets.CLUSTER_PASSWORD }}
+          # storacha-key: ${{ secrets.STORACHA_KEY }}     # disabled: proof expired 2026-01-24
+          # storacha-proof: ${{ secrets.STORACHA_PROOF }}  # disabled: proof expired 2026-01-24
           pinata-jwt-token: ${{ secrets.PINATA_JWT_TOKEN }}
           github-token: ${{ github.token }}
 
