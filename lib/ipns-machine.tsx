@@ -162,7 +162,7 @@ export const ipnsMachine = setup({
     formData: {
       value: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
       lifetime: DEFAULT_LIFETIME_MS,
-      ttlMs: 60 * 1000, // Default TTL of 60 seconds in milliseconds
+      ttlMs: 5 * 60 * 1000, // Default TTL of 5 minutes in milliseconds (matches Kubo's `ipfs name publish --ttl` default)
     },
   },
   on: {
