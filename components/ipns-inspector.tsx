@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useMachine } from '@xstate/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -62,6 +62,16 @@ export default function IPNSInspector() {
       : 'inspect'
   const { error } = state.context
 
+  // Prefill IPNS Name from URL fragment on mount to support sharing/bookmarking
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const fragment = window.location.hash.substring(1) // Remove the # prefix
+      if (fragment) {
+        send({ type: 'UPDATE_NAME', value: fragment })
+      }
+    }
+  }, [send])
+
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
@@ -88,7 +98,13 @@ export default function IPNSInspector() {
                     placeholder="k51... or 12D..."
                   />
                   <Button
-                    onClick={() => send({ type: 'INSPECT_NAME' })}
+                    onClick={() => {
+                      send({ type: 'INSPECT_NAME' })
+                      // Update URL fragment to allow sharing/bookmarking the current IPNS name
+                      if (state.context.nameInput) {
+                        window.location.hash = state.context.nameInput
+                      }
+                    }}
                     disabled={
                       isLoading || state.context.nameValidationError || state.context.nameInput?.length === 0
                     }
